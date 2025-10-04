@@ -1,4 +1,4 @@
-# 🌍 CitySense - NASA Environmental Data Viewer
+# 🌍 WCity - NASA Environmental Data Viewer
 
 Note: Nasa Space Apps Challenge — Data Pathways to Healthy Cities and Human Settlements
  

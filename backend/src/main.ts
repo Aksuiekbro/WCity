@@ -6,7 +6,11 @@ async function bootstrap() {
 
   // Enable CORS for frontend
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'], // Vite default ports
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5174', // Vite default ports
+      process.env.FRONTEND_URL, // Production frontend URL
+    ].filter(Boolean),
     credentials: true,
   });
 
