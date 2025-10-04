@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { getRecentGIBSDate } from '../utils/dateUtils';
 
 export const useMapStore = defineStore('map', () => {
   const selectedLocation = ref(null);
@@ -8,6 +9,8 @@ export const useMapStore = defineStore('map', () => {
   const loadingRecommendations = ref(false);
   const loading = ref(false);
   const error = ref(null);
+  // Selected base date for GIBS layers (YYYY-MM-DD)
+  const gibsDate = ref(getRecentGIBSDate());
 
   const activeLayers = ref({
     temperature: false,
@@ -21,6 +24,8 @@ export const useMapStore = defineStore('map', () => {
     aquaBT31Night: false,
     terraBT31Day: false,
     terraBT31Night: false,
+    hospitals: false,
+    schools: false,
   });
 
   function setSelectedLocation(lat, lng) {
@@ -47,6 +52,10 @@ export const useMapStore = defineStore('map', () => {
     error.value = errorMessage;
   }
 
+  function setGibsDate(dateStr) {
+    gibsDate.value = dateStr;
+  }
+
   function toggleLayer(layerName) {
     activeLayers.value[layerName] = !activeLayers.value[layerName];
   }
@@ -65,6 +74,7 @@ export const useMapStore = defineStore('map', () => {
     loadingRecommendations,
     loading,
     error,
+    gibsDate,
     activeLayers,
     setSelectedLocation,
     setLocationScores,
@@ -72,6 +82,7 @@ export const useMapStore = defineStore('map', () => {
     setLoadingRecommendations,
     setLoading,
     setError,
+    setGibsDate,
     toggleLayer,
     clearSelection,
   };

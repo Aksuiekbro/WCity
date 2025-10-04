@@ -117,3 +117,44 @@ export function getDateRange(days = 30) {
   }
   return dates.reverse(); // Oldest to newest
 }
+
+/**
+ * Resolve a GIBS date for a given product type using an optional base date string (YYYY-MM-DD)
+ * - daily: uses base date if provided, otherwise recent safe date
+ * - 16day: snaps base date to the start of the current 16-day period
+ * - monthly: uses the first day of the base date's month
+ * - previousYear: uses same month/day one year prior from base date
+ */
+export function resolveGIBSDate(dateFormat, baseDateStr) {
+  if (!baseDateStr) {
+    return getGIBSDateByType(dateFormat);
+  }
+
+  const base = parseGIBSDate(baseDateStr);
+
+  switch (dateFormat) {
+    case 'daily': {
+      return formatDateForGIBS(base);
+    }
+    case '16day': {
+      const startOfYear = new Date(base.getFullYear(), 0, 1);
+      const dayOfYear = Math.floor((base.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+      const period = Math.floor(dayOfYear / 16) * 16;
+      const periodDate = new Date(startOfYear);
+      periodDate.setDate(periodDate.getDate() + period);
+      return formatDateForGIBS(periodDate);
+    }
+    case 'monthly': {
+      const firstOfMonth = new Date(base.getFullYear(), base.getMonth(), 1);
+      return formatDateForGIBS(firstOfMonth);
+    }
+    case 'previousYear': {
+      const prev = new Date(base);
+      prev.setFullYear(prev.getFullYear() - 1);
+      return formatDateForGIBS(prev);
+    }
+    default: {
+      return getGIBSDateByType(dateFormat);
+    }
+  }
+}

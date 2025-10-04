@@ -2,10 +2,11 @@
 import { onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat'; // Population heatmap plugin
 import { useMapStore } from '../stores/mapStore';
 import { apiClient } from '../services/apiClient';
 import { GIBS_LAYERS, LAYER_ID_TO_GIBS } from '../config/gibsLayers';
-import { getGIBSDateByType } from '../utils/dateUtils';
+import { resolveGIBSDate } from '../utils/dateUtils';
 import 'leaflet.vectorgrid';
 
 // Fix Leaflet default icon paths for Vite
@@ -25,9 +26,15 @@ const mapStore = useMapStore();
 const mapContainer = ref(null);
 let map = null;
 let marker = null;
+let heatmapLayer = null; // Population density heatmap
+let currentZoom = 10;
+const HEATMAP_MIN_ZOOM = 10; // Show heatmap at zoom 10+
 
 // Store GIBS layer instances
 const gibsLayers = new Map();
+
+// Store Infrastructure layer groups (hospitals, schools)
+const infraLayerGroups = new Map();
 
 onMounted(() => {
   if (!mapContainer.value) return;
@@ -47,7 +54,7 @@ onMounted(() => {
     if (!config) return;
 
     // Get appropriate date for this layer type
-    const date = getGIBSDateByType(config.dateFormat);
+    const date = resolveGIBSDate(config.dateFormat, mapStore.gibsDate);
 
     // Create layer (raster PNG vs vector MVT)
     if (config.isVector) {
@@ -159,7 +166,208 @@ onMounted(() => {
       mapStore.setLoading(false);
     }
   });
+
+  // Handle zoom changes for hybrid visualization
+  map.on('zoomend', () => {
+    currentZoom = map.getZoom();
+    updatePopulationHeatmap();
+    updateVisibleInfrastructure();
+  });
+
+  // Handle map movement to update heatmap data
+  map.on('moveend', () => {
+    updatePopulationHeatmap();
+    updateVisibleInfrastructure();
+  });
+
+  // Initial heatmap update
+  updatePopulationHeatmap();
 });
+
+/**
+ * Update population density heatmap based on current viewport and zoom
+ * Shows heatmap at zoom 10+, uses GeoNames city data
+ */
+async function updatePopulationHeatmap() {
+  if (!map) {
+    console.warn('⚠ Heatmap update skipped: map not initialized');
+    return;
+  }
+
+  const zoom = map.getZoom();
+  console.log(`🔍 Heatmap check: zoom=${zoom}, min=${HEATMAP_MIN_ZOOM}`);
+
+  // Remove heatmap if zoom is too low
+  if (zoom < HEATMAP_MIN_ZOOM) {
+    if (heatmapLayer && map.hasLayer(heatmapLayer)) {
+      map.removeLayer(heatmapLayer);
+      console.log('📍 Population heatmap hidden (zoom < 10)');
+    }
+    return;
+  }
+
+  // Fetch cities in current viewport
+  const bounds = map.getBounds();
+  const north = bounds.getNorth();
+  const south = bounds.getSouth();
+  const east = bounds.getEast();
+  const west = bounds.getWest();
+
+  console.log(`🌍 Fetching cities for bounds: N=${north.toFixed(2)}, S=${south.toFixed(2)}, E=${east.toFixed(2)}, W=${west.toFixed(2)}`);
+
+  try {
+    const response = await apiClient.getCitiesInViewport(north, south, east, west);
+    console.log('📡 GeoNames response:', response);
+
+    if (!response.cities || response.cities.length === 0) {
+      console.warn('⚠ No cities found in viewport for heatmap');
+      return;
+    }
+
+    // Convert city data to heatmap points [lat, lng, intensity]
+    const heatData = response.cities.map(city => {
+      // Normalize population to intensity (0-1)
+      // Log scale for better visualization
+      const intensity = Math.min(1, Math.log10(city.population + 1) / 7); // Max at 10M population
+      return [city.lat, city.lng, intensity];
+    });
+
+    console.log(`🔥 Creating heatmap with ${heatData.length} points`);
+
+    // Remove old heatmap if exists
+    if (heatmapLayer && map.hasLayer(heatmapLayer)) {
+      map.removeLayer(heatmapLayer);
+    }
+
+    // Create new heatmap layer
+    heatmapLayer = L.heatLayer(heatData, {
+      radius: 25,
+      blur: 35,
+      maxZoom: 17,
+      max: 1.0,
+      gradient: {
+        0.0: 'blue',
+        0.3: 'cyan',
+        0.5: 'lime',
+        0.7: 'yellow',
+        1.0: 'red'
+      }
+    }).addTo(map);
+
+    console.log(`✅ Population heatmap updated with ${response.cities.length} cities`);
+  } catch (error) {
+    console.error('❌ Error updating population heatmap:', error);
+    console.error('Error details:', error.message, error.stack);
+  }
+}
+
+// Update all GIBS layers when the selected date changes
+function updateGibsLayersForDate() {
+  if (!map) return;
+
+  Object.entries(LAYER_ID_TO_GIBS).forEach(([layerId, gibsId]) => {
+    const config = GIBS_LAYERS[gibsId];
+    if (!config) return;
+
+    const date = resolveGIBSDate(config.dateFormat, mapStore.gibsDate);
+    const existingLayer = gibsLayers.get(layerId);
+    const wasActive = existingLayer ? map.hasLayer(existingLayer) : false;
+
+    if (config.isVector) {
+      if (existingLayer && map.hasLayer(existingLayer)) {
+        map.removeLayer(existingLayer);
+      }
+
+      const mvtUrl = config.mvtUrl.replace('{date}', date);
+
+      const vectorLayer = L.vectorGrid.protobuf(mvtUrl, {
+        maxNativeZoom: config.maxZoom,
+        maxZoom: 19,
+        interactive: false,
+        rendererFactory: L.canvas.tile,
+        vectorTileLayerStyles: {
+          'FIRMS_MODIS_Thermal_Anomalies': function(properties, zoom, geometryDimension) {
+            if (geometryDimension === 1) {
+              const frp = properties.FRP || 0;
+              const confidence = properties.CONFIDENCE || 0;
+              let fillColor = '#ff9900';
+              if (frp > 200) fillColor = '#ff0000';
+              else if (frp > 100) fillColor = '#ff3b30';
+              return {
+                radius: Math.min(3 + (frp / 100), 6),
+                weight: 1,
+                fillColor: fillColor,
+                fillOpacity: confidence > 80 ? 0.9 : 0.7,
+                color: '#ff0000',
+                fill: true
+              };
+            }
+            return {};
+          }
+        },
+        getFeatureId: (feature) => {
+          return feature.properties.id || feature.properties.fid || Math.random();
+        },
+        noWrap: true,
+        bounds: L.latLngBounds(L.latLng(-85.051129, -180), L.latLng(85.051129, 180)),
+      });
+
+      vectorLayer.on('load', () => {
+        console.log(`✓ MVT layer ${gibsId} reloaded for date ${date}`);
+      });
+
+      vectorLayer.on('tileerror', (e) => {
+        console.warn(`⚠ MVT tile error for ${gibsId} (date ${date}):`, e);
+      });
+
+      vectorLayer._gibsMaxZoom = config.maxZoom;
+      vectorLayer._gibsId = gibsId;
+      gibsLayers.set(layerId, vectorLayer);
+      if (wasActive) {
+        vectorLayer.addTo(map);
+      }
+    } else {
+      const newUrl = config.url.replace('{date}', date);
+      if (existingLayer && typeof existingLayer.setUrl === 'function') {
+        existingLayer.setUrl(newUrl);
+        existingLayer._gibsId = gibsId;
+        existingLayer._gibsMaxZoom = config.maxZoom;
+        if (wasActive && !map.hasLayer(existingLayer)) {
+          existingLayer.addTo(map);
+        }
+      } else {
+        if (existingLayer && map.hasLayer(existingLayer)) {
+          map.removeLayer(existingLayer);
+        }
+        const tileLayer = L.tileLayer(newUrl, {
+          attribution: config.attribution,
+          opacity: config.opacity,
+          tileSize: config.tileSize,
+          maxNativeZoom: config.maxZoom,
+          maxZoom: 19,
+          noWrap: true,
+          bounds: L.latLngBounds(L.latLng(-85.051129, -180), L.latLng(85.051129, 180)),
+          updateWhenIdle: true,
+          detectRetina: true,
+        });
+        tileLayer._gibsMaxZoom = config.maxZoom;
+        tileLayer._gibsId = gibsId;
+        gibsLayers.set(layerId, tileLayer);
+        if (wasActive) {
+          tileLayer.addTo(map);
+        }
+      }
+    }
+  });
+}
+
+// React to date changes
+watch(
+  () => mapStore.gibsDate,
+  () => {
+    updateGibsLayersForDate();
+  }
+);
 
 // Watch for layer toggles and add/remove NASA GIBS layers
 watch(
@@ -182,8 +390,8 @@ watch(
         if (gibsLayer._gibsId === 'MODIS_Aqua_Land_Surface_Temp_Day' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 7)) {
           map.setZoom(gibsLayer._gibsMaxZoom ?? 7);
         }
-        // Clamp zoom for AOD (Deep Blue, Aqua) to avoid requesting tiles beyond native max
-        if (gibsLayer._gibsId === 'MODIS_Aqua_AOD_Deep_Blue_Combined' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 9)) {
+        // Clamp zoom for AOD (VIIRS NOAA-20) to avoid requesting tiles beyond native max
+        if (gibsLayer._gibsId === 'VIIRS_NOAA20_Aerosol_Optical_Depth' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 9)) {
           map.setZoom(gibsLayer._gibsMaxZoom ?? 9);
         }
         // Clamp for newly added LST/BT31 layers (native Level 7)

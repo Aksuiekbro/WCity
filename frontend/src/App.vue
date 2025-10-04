@@ -7,7 +7,7 @@ import LocationPanel from './components/LocationPanel.vue'
 <template>
   <div class="app-container">
     <header class="app-header">
-      <h1>🌍 CitySense - NASA Environmental Data Viewer</h1>
+      <h1>🌍 WCity - NASA Environmental Data Viewer</h1>
       <p>Interactive city suitability analysis using NASA satellite data</p>
     </header>
 
@@ -55,10 +55,32 @@ body {
 }
 
 .app-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(
+    -45deg,
+    #667eea,
+    #764ba2,
+    #f093fb,
+    #4facfe,
+    #00f2fe,
+    #667eea
+  );
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
   color: white;
   padding: 20px 30px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .app-header h1 {
