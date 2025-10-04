@@ -20,6 +20,55 @@ const infrastructureLayers = [
     icon: '🏫',
     description: 'Educational institutions'
   },
+  {
+    key: 'fire_stations',
+    label: 'Fire Stations',
+    color: '#e67e22',
+    icon: '🚒',
+    description: 'Emergency response (fire)'
+  },
+  {
+    key: 'police',
+    label: 'Police',
+    color: '#34495e',
+    icon: '👮',
+    description: 'Law enforcement'
+  },
+  {
+    key: 'power_plants',
+    label: 'Power Plants',
+    color: '#f1c40f',
+    icon: '⚡',
+    description: 'Energy generation facilities'
+  },
+  {
+    key: 'kindergartens',
+    label: 'Kindergartens',
+    color: '#e91e63',
+    icon: '👶',
+    description: 'Early childhood education'
+  },
+  {
+    key: 'universities',
+    label: 'Universities',
+    color: '#8e44ad',
+    icon: '🎓',
+    description: 'Higher education'
+  },
+  {
+    key: 'orphanages',
+    label: 'Orphanages',
+    color: '#16a085',
+    icon: '🏠',
+    description: 'Child social facilities'
+  },
+  {
+    key: 'nursing_homes',
+    label: 'Nursing Homes',
+    color: '#795548',
+    icon: '🏡',
+    description: 'Elder care facilities'
+  },
 ];
 
 const layers = [

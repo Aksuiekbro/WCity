@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use Vite env if provided, otherwise rely on Vite dev proxy via relative '/api'
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Use Vite env if provided, otherwise default to explicit backend URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 // Fallback bases for dev: try proxy, then explicit localhost ports
 const API_BASE_FALLBACKS = Array.from(

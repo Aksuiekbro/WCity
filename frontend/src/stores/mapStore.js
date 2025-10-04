@@ -27,6 +27,13 @@ export const useMapStore = defineStore('map', () => {
     populationDensity: false,  // SEDAC Population Density (WMS)
     hospitals: false,
     schools: false,
+    fire_stations: false,
+    police: false,
+    power_plants: false,
+    kindergartens: false,
+    universities: false,
+    orphanages: false,
+    nursing_homes: false,
   });
 
   function setSelectedLocation(lat, lng) {

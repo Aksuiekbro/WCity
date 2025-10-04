@@ -1,4 +1,6 @@
-<script setup>
+пожарные участки, полицейские, энергостанции, детсады, уники, детдома, дома пристарелых, итд
+
+Can you add that<script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -27,6 +29,9 @@ const mapContainer = ref(null);
 let map = null;
 let marker = null;
 const INFRA_MIN_ZOOM = 12; // Show hospitals/schools at zoom 12+
+const INFRA_LAYER_KEYS = new Set([
+  'hospitals', 'schools', 'fire_stations', 'police', 'power_plants', 'kindergartens', 'universities', 'orphanages', 'nursing_homes'
+]);
 
 // Store GIBS layer instances
 const gibsLayers = new Map();
@@ -36,6 +41,12 @@ const infraLayerGroups = new Map();
 
 // Store heatmap layers (multiple layers for different city sizes)
 let populationHeatmapLayers = [];
+
+// Search state (geocoding)
+const searchQuery = ref('');
+const searchResults = ref([]);
+const isSearchLoading = ref(false);
+let searchDebounce = null;
 
 onMounted(() => {
   if (!mapContainer.value) return;
@@ -249,6 +260,89 @@ onBeforeUnmount(() => {
   }
 });
 
+// Debounced geocoding search (Nominatim)
+async function performSearchNow(query) {
+  if (!query || query.trim().length < 2) {
+    searchResults.value = [];
+    return;
+  }
+  try {
+    isSearchLoading.value = true;
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&addressdetails=1&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        // Identify application per Nominatim usage policy
+        'Accept-Language': 'en',
+      }
+    });
+    const data = await res.json();
+    searchResults.value = (data || []).map((r) => ({
+      displayName: r.display_name,
+      lat: parseFloat(r.lat),
+      lon: parseFloat(r.lon)
+    }));
+  } catch (e) {
+    console.warn('Geocoding search failed:', e);
+  } finally {
+    isSearchLoading.value = false;
+  }
+}
+
+function onSearchInput() {
+  if (searchDebounce) clearTimeout(searchDebounce);
+  const q = searchQuery.value;
+  if (!q || q.trim() === '') {
+    searchResults.value = [];
+    return;
+  }
+  searchDebounce = setTimeout(() => performSearchNow(q), 400);
+}
+
+async function onSearchEnter() {
+  const q = searchQuery.value;
+  if (!q || q.trim() === '') return;
+  await performSearchNow(q);
+  if (searchResults.value.length > 0) {
+    selectSearchResult(searchResults.value[0]);
+  }
+}
+
+async function selectSearchResult(result) {
+  searchResults.value = [];
+  if (!map || !result) return;
+  const lat = result.lat;
+  const lng = result.lon;
+  const targetZoom = Math.max(map.getZoom() ?? 2, 12);
+  map.setView([lat, lng], targetZoom, { animate: true });
+
+  // Add/update marker and fetch scores (same flow as map click)
+  if (marker) {
+    marker.setLatLng([lat, lng]);
+  } else {
+    marker = L.marker([lat, lng]).addTo(map);
+  }
+
+  mapStore.setLoading(true);
+  mapStore.setSelectedLocation(lat, lng);
+  try {
+    const scores = await apiClient.getLocationScore(lat, lng);
+    mapStore.setLocationScores(scores);
+    mapStore.setError(null);
+    marker.bindPopup(`
+      <div style="min-width: 200px;">
+        <h3 style="margin: 0 0 10px 0;">City Score: ${scores.overall.grade}</h3>
+        <p style="margin: 5px 0;"><strong>Overall:</strong> ${scores.overall.score}%</p>
+        <p style="margin: 5px 0; font-size: 12px;">${scores.overall.suitability}</p>
+      </div>
+    `).openPopup();
+  } catch (error) {
+    console.error('Error fetching scores:', error);
+    mapStore.setError('Failed to fetch location data');
+  } finally {
+    mapStore.setLoading(false);
+  }
+}
+
 // Population heatmap functionality removed to prevent GeoNames API rate limiting
 // Population density data is still available when clicking individual points on the map
 
@@ -289,9 +383,18 @@ async function updateInfrastructureLayer(type) {
     // Clear previous markers
     group.clearLayers();
 
-    const isHospital = type === 'hospitals';
-    const color = isHospital ? '#e74c3c' : '#3498db';
-    const emoji = isHospital ? '🏥' : '🏫';
+  const styleByType = {
+    hospitals:     { color: '#e74c3c', emoji: '🏥' },
+    schools:       { color: '#3498db', emoji: '🏫' },
+    fire_stations: { color: '#e67e22', emoji: '🚒' },
+    police:        { color: '#34495e', emoji: '👮' },
+    power_plants:  { color: '#f1c40f', emoji: '⚡' },
+    kindergartens: { color: '#e91e63', emoji: '👶' },
+    universities:  { color: '#8e44ad', emoji: '🎓' },
+    orphanages:    { color: '#16a085', emoji: '🏠' },
+    nursing_homes: { color: '#795548', emoji: '🏡' },
+  };
+  const { color, emoji } = styleByType[type] || { color: '#2c3e50', emoji: '📍' };
 
     (response.pois || []).forEach((poi) => {
       if (typeof poi.lat !== 'number' || typeof poi.lng !== 'number') return;
@@ -302,7 +405,7 @@ async function updateInfrastructureLayer(type) {
         fillColor: color,
         fillOpacity: 0.85,
       });
-      marker.bindPopup(`<strong>${emoji} ${poi.name}</strong><br/>${isHospital ? 'Hospital' : 'School'}`);
+      marker.bindPopup(`<strong>${emoji} ${poi.name}</strong>`);
       group.addLayer(marker);
     });
 
@@ -315,12 +418,11 @@ async function updateInfrastructureLayer(type) {
 }
 
 function updateVisibleInfrastructure() {
-  if (mapStore.activeLayers.hospitals) {
-    updateInfrastructureLayer('hospitals');
-  }
-  if (mapStore.activeLayers.schools) {
-    updateInfrastructureLayer('schools');
-  }
+  INFRA_LAYER_KEYS.forEach((key) => {
+    if (mapStore.activeLayers[key]) {
+      updateInfrastructureLayer(key);
+    }
+  });
 }
 
 // Fetch and create population heatmap with cities 100k+
@@ -571,6 +673,60 @@ async function createPopulationHeatmap() {
         [61.0883, 72.6163, 0.13],  // Nefteyugansk
         [43.3178, 45.6949, 0.38],  // Grozny
 
+        // FINLAND & NEARBY COUNTRIES (Nordics & Baltics)
+        // Finland
+        [60.2055, 24.6559, 0.31],  // Espoo
+        [60.2934, 25.0378, 0.24],  // Vantaa
+        [61.4978, 23.7610, 0.24],  // Tampere
+        [60.4518, 22.2666, 0.19],  // Turku
+        [65.0121, 25.4651, 0.21],  // Oulu
+        [62.2426, 25.7473, 0.14],  // Jyväskylä
+        [62.8924, 27.6770, 0.12],  // Kuopio
+        [60.9827, 25.6615, 0.12],  // Lahti
+        [61.4853, 21.7971, 0.08],  // Pori
+        [62.6010, 29.7636, 0.08],  // Joensuu
+        [61.0583, 28.1887, 0.07],  // Lappeenranta
+        // Sweden
+        [57.7089, 11.9746, 0.58],  // Gothenburg
+        [55.6050, 13.0038, 0.35],  // Malmö
+        [59.8586, 17.6389, 0.16],  // Uppsala
+        [59.6099, 16.5448, 0.13],  // Västerås
+        [59.2741, 15.2066, 0.12],  // Örebro
+        [58.4108, 15.6214, 0.16],  // Linköping
+        [56.0465, 12.6945, 0.15],  // Helsingborg
+        [57.7815, 14.1562, 0.14],  // Jönköping
+        [58.5926, 16.1789, 0.13],  // Norrköping
+        // Norway
+        [60.3913, 5.3221, 0.28],   // Bergen
+        [58.9690, 5.7331, 0.23],   // Stavanger
+        [63.4305, 10.3951, 0.20],  // Trondheim
+        [59.7439, 10.2045, 0.10],  // Drammen
+        [59.2181, 10.9298, 0.15],  // Fredrikstad
+        [69.6492, 18.9553, 0.08],  // Tromsø
+        [58.1467, 7.9956, 0.11],   // Kristiansand
+        [62.4722, 6.1549, 0.07],   // Ålesund
+        // Estonia
+        [59.4370, 24.7536, 0.43],  // Tallinn
+        [58.3776, 26.7290, 0.10],  // Tartu
+        [59.3797, 28.1791, 0.06],  // Narva
+        [58.3859, 24.4971, 0.04],  // Pärnu
+        // Latvia
+        [56.9496, 24.1052, 0.62],  // Riga
+        [55.8823, 26.5335, 0.09],  // Daugavpils
+        [56.5047, 21.0108, 0.07],  // Liepāja
+        [56.6511, 23.7214, 0.06],  // Jelgava
+        // Lithuania
+        [54.6872, 25.2797, 0.58],  // Vilnius
+        [54.8985, 23.9036, 0.30],  // Kaunas
+        [55.7033, 21.1443, 0.15],  // Klaipėda
+        [55.9345, 23.3137, 0.10],  // Šiauliai
+        [55.7348, 24.3575, 0.09],  // Panevėžys
+        // Denmark
+        [56.1629, 10.2039, 0.28],  // Aarhus
+        [55.4038, 10.4024, 0.18],  // Odense
+        [57.0488, 9.9217, 0.12],   // Aalborg
+        [55.4767, 8.4594, 0.07],   // Esbjerg
+
         // AFRICA (80+ cities)
         [-26.2041, 28.0473, 5.6], [6.5244, 3.3792, 14.8], [-1.2921, 36.8219, 4.4],
         [33.5731, -7.5898, 3.7], [-4.4419, 15.2663, 14.3], [9.0320, 38.7469, 5.0],
@@ -788,13 +944,21 @@ watch(
 
     Object.entries(layers).forEach(([layerId, isActive]) => {
       // Handle infrastructure toggles
-      if (layerId === 'hospitals' || layerId === 'schools') {
+      if (INFRA_LAYER_KEYS.has(layerId)) {
         const group = getOrCreateInfraGroup(layerId);
         if (isActive) {
           if (!map.hasLayer(group)) {
             group.addTo(map);
           }
-          updateInfrastructureLayer(layerId);
+          // Auto-zoom in so infrastructure becomes visible
+          const currentZoom = map.getZoom();
+          if (currentZoom < INFRA_MIN_ZOOM) {
+            console.log(`🔎 Zooming to ${INFRA_MIN_ZOOM} to show ${layerId}`);
+            map.setView(map.getCenter(), INFRA_MIN_ZOOM, { animate: true });
+            // zoomend handler will trigger updateVisibleInfrastructure()
+          } else {
+            updateInfrastructureLayer(layerId);
+          }
         } else {
           if (map.hasLayer(group)) {
             map.removeLayer(group);
@@ -884,6 +1048,28 @@ watch(
 
 <template>
   <div class="map-wrapper">
+    <div class="search-container">
+      <input
+        class="search-input"
+        type="text"
+        v-model="searchQuery"
+        @input="onSearchInput"
+        @keyup.enter="onSearchEnter"
+        placeholder="Search for a place or city..."
+        :disabled="mapStore.loading"
+      />
+      <div v-if="isSearchLoading" class="search-loading">Searching...</div>
+      <ul v-if="searchResults.length > 0" class="search-results">
+        <li
+          v-for="res in searchResults"
+          :key="`${res.lat},${res.lon}`"
+          class="search-item"
+          @click="selectSearchResult(res)"
+        >
+          {{ res.displayName }}
+        </li>
+      </ul>
+    </div>
     <div ref="mapContainer" class="map-container"></div>
     <div v-if="mapStore.loading" class="loading-overlay">
       <div class="spinner"></div>
@@ -897,6 +1083,58 @@ watch(
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+.search-container {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1001;
+  width: 320px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  font-size: 13px;
+  background: #ffffff; /* Ensure readable background in dark mode */
+  color: #2c3e50;      /* Dark text for readability */
+}
+
+.search-input::placeholder {
+  color: #9aa0a6;      /* Subtle placeholder contrast on white bg */
+}
+
+.search-loading {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.search-results {
+  margin: 6px 0 0 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  max-height: 260px;
+  overflow-y: auto;
+  color: #2c3e50;      /* Ensure list text is visible on white bg */
+}
+
+.search-item {
+  padding: 8px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.search-item:hover {
+  background: #f6f9fc;
 }
 
 .map-container {

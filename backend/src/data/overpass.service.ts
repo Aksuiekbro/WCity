@@ -37,6 +37,42 @@ export class OverpassService {
     return this.queryOverpassPOI(bounds, 'school');
   }
 
+  /** Fire stations */
+  async getFireStationsInViewport(bounds: ViewportBounds): Promise<POI[]> {
+    return this.queryOverpassByKey(bounds, 'amenity', 'fire_station', 'fire_stations');
+  }
+
+  /** Police stations */
+  async getPoliceInViewport(bounds: ViewportBounds): Promise<POI[]> {
+    return this.queryOverpassByKey(bounds, 'amenity', 'police', 'police');
+  }
+
+  /** Kindergartens / childcare */
+  async getKindergartensInViewport(bounds: ViewportBounds): Promise<POI[]> {
+    return this.queryOverpassByKey(bounds, 'amenity', '^(kindergarten|childcare)$', 'kindergartens');
+  }
+
+  /** Universities */
+  async getUniversitiesInViewport(bounds: ViewportBounds): Promise<POI[]> {
+    return this.queryOverpassByKey(bounds, 'amenity', 'university', 'universities');
+  }
+
+  /** Power plants */
+  async getPowerPlantsInViewport(bounds: ViewportBounds): Promise<POI[]> {
+    return this.queryOverpassByKey(bounds, 'power', 'plant', 'power_plants');
+  }
+
+  /** Orphanages (social facilities) */
+  async getOrphanagesInViewport(bounds: ViewportBounds): Promise<POI[]> {
+    // Use social_facility values; includes group_home commonly used for orphanages
+    return this.queryOverpassByKey(bounds, 'social_facility', '^(orphanage|group_home)$', 'orphanages');
+  }
+
+  /** Nursing homes / assisted living (social facilities) */
+  async getNursingHomesInViewport(bounds: ViewportBounds): Promise<POI[]> {
+    return this.queryOverpassByKey(bounds, 'social_facility', '^(nursing_home|assisted_living)$', 'nursing_homes');
+  }
+
   /**
    * Generic method to query Overpass API for POIs by amenity type
    */
@@ -101,6 +137,65 @@ export class OverpassService {
         console.warn('Overpass API rate limit exceeded, returning empty array');
       }
 
+      return [];
+    }
+  }
+
+  /** Generic key/value query with regex or exact value */
+  private async queryOverpassByKey(
+    bounds: ViewportBounds,
+    key: string,
+    valueOrRegex: string,
+    resultType?: string,
+  ): Promise<POI[]> {
+    const { south, west, north, east } = bounds;
+    // Build selector: [key="value"] or [key~"regex"] if contains regex markers
+    const usesRegex = /[\^\$\|\(\)\[\]\+\?\*]/.test(valueOrRegex);
+    const filter = usesRegex ? `["${key}"~"${valueOrRegex}"]` : `["${key}"="${valueOrRegex}"]`;
+    const query = `
+      [out:json][timeout:10];
+      (
+        node${filter}(${south},${west},${north},${east});
+        way${filter}(${south},${west},${north},${east});
+        relation${filter}(${south},${west},${north},${east});
+      );
+      out center;
+    `;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          this.OVERPASS_API_URL,
+          `data=${encodeURIComponent(query)}`,
+          {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 15000,
+          },
+        ),
+      );
+
+      if (!response.data?.elements) {
+        return [];
+      }
+
+      const pois: POI[] = response.data.elements.map((element: any) => {
+        const lat = element.center?.lat || element.lat;
+        const lon = element.center?.lon || element.lon;
+        const name = element.tags?.name || `Unnamed ${resultType || key}`;
+        return {
+          id: element.id.toString(),
+          lat,
+          lng: lon,
+          name,
+          type: resultType || (usesRegex ? `${key}:${valueOrRegex}` : `${key}:${valueOrRegex}`),
+        };
+      });
+      return pois;
+    } catch (error) {
+      console.error(`Error fetching ${resultType || `${key}=${valueOrRegex}` } from Overpass API:`, error.message);
+      if (error.response?.status === 429) {
+        console.warn('Overpass API rate limit exceeded, returning empty array');
+      }
       return [];
     }
   }

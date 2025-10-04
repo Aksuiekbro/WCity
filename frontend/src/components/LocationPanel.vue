@@ -247,6 +247,7 @@ function formatCoordinate(coord, isLat) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   height: 100%;
   overflow-y: auto;
+  color: #2c3e50; /* Ensure readable text on white panel (dark mode fix) */
 }
 
 .panel-header {
@@ -299,6 +300,7 @@ function formatCoordinate(coord, isLat) {
   border-radius: 4px;
   font-size: 14px;
   font-family: monospace;
+  color: #2c3e50; /* Explicitly set coordinate text color */
 }
 
 .overall-score {
