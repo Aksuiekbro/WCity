@@ -132,7 +132,7 @@ GET /api/map/score?lat={latitude}&lng={longitude}
   "location": { "lat": 40.7128, "lng": -74.006 },
   "scores": {
     "airQuality": { "score": 75, "aod": 0.25, "interpretation": "Good" },
-    "vegetation": { "score": 60, "ndvi": 0.45, "interpretation": "Moderate Vegetation" },
+    "vegetation": { "score": 67, "ndvi": 0.45, "interpretation": "Moderate Vegetation" },
     "temperature": { "score": 80, "current": 22, "unit": "°C" },
     "water": { "score": 70, "soilMoisture": 0.35, "unit": "volumetric" },
     "urbanization": { "score": 85, "populationDensity": 10752, "unit": "people/km²" }
