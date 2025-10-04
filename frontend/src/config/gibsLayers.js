@@ -237,19 +237,19 @@ export const GIBS_LAYERS = {
     },
   },
 
-  // WorldPop Population Density Layer (WMS from ogc.worldpop.org)
+  // WorldPop Population Density Layer (WMS via proxy to avoid CORS)
   populationDensity: {
     id: 'populationDensity',
     name: 'Population Density (2020)',
     description: 'Global population density from WorldPop (people per 100m grid cell, 2020)',
     isWMS: true, // WMS layer
-    wmsUrl: 'https://ogc.worldpop.org/geoserver/wpGlobal/wms',
+    wmsUrl: '/worldpop-wms', // Proxied through Vite to avoid CORS
     wmsLayers: 'wpGlobal:ppp_2020',
     attribution: 'WorldPop / University of Southampton',
-    opacity: 0.6,
+    opacity: 0.7,
     format: 'image/png',
     transparent: true,
-    version: '1.3.0',
+    version: '1.1.0', // Changed to 1.1.0 for better compatibility
     legend: {
       min: 0,
       max: 1000,

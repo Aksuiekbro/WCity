@@ -66,8 +66,14 @@ onMounted(() => {
       return;
     }
 
-    // Handle WMS layers (deprecated - using ArcGIS instead)
+    // Handle WMS layers (WorldPop population density)
     if (config.isWMS) {
+      console.log(`🔧 Initializing WMS layer: ${gibsId}`, {
+        url: config.wmsUrl,
+        layers: config.wmsLayers,
+        version: config.version
+      });
+
       const wmsLayer = L.tileLayer.wms(config.wmsUrl, {
         layers: config.wmsLayers,
         format: config.format,
@@ -76,12 +82,22 @@ onMounted(() => {
         version: config.version,
         attribution: config.attribution,
         maxZoom: 19,
-        crs: L.CRS.EPSG3857,
+        // Don't set crs - let Leaflet handle it automatically
       });
+
+      // Add error and load event handlers for debugging
+      wmsLayer.on('tileerror', (error) => {
+        console.error(`❌ WMS tile error for ${gibsId}:`, error);
+      });
+
+      wmsLayer.on('tileload', () => {
+        console.log(`✓ WMS tile loaded for ${gibsId}`);
+      });
+
       wmsLayer._gibsId = gibsId;
       wmsLayer._isWMS = true;
       gibsLayers.set(layerId, wmsLayer);
-      console.log(`✓ WMS layer ${gibsId} initialized`);
+      console.log(`✓ WMS layer ${gibsId} initialized successfully`);
       return;
     }
 
