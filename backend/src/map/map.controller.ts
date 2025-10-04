@@ -47,4 +47,19 @@ export class MapController {
 
     return await this.mapService.getTimeSeries(latitude, longitude, metric);
   }
+
+  @Get('recommendations')
+  async getRecommendations(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+  ) {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return { error: 'Invalid coordinates' };
+    }
+
+    return await this.mapService.getRecommendations(latitude, longitude);
+  }
 }

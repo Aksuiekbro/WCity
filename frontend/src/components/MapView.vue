@@ -52,30 +52,53 @@ onMounted(() => {
     // Create layer (raster PNG vs vector MVT)
     if (config.isVector) {
       const mvtUrl = config.mvtUrl.replace('{date}', date);
+
       const vectorLayer = L.vectorGrid.protobuf(mvtUrl, {
-        maxNativeZoom: config.maxZoom,
-        maxZoom: config.maxZoom,
+        maxNativeZoom: config.maxZoom, // Native tile zoom (7 for fires)
+        maxZoom: 19, // Allow scaling to higher zooms
         interactive: false,
         rendererFactory: L.canvas.tile,
-        // Style by source-layer name. Provide multiple aliases to be safe.
         vectorTileLayerStyles: {
-          MODIS_Combined_Thermal_Anomalies_All_v6_NRT: {
-            radius: 2.5,
-            color: '#a40000',
-            weight: 0,
-            fill: true,
-            fillColor: '#ff3b30',
-            fillOpacity: 0.9,
-          },
-          MODIS_Combined_Thermal_Anomalies_All: {
-            radius: 2.5,
-            color: '#a40000',
-            weight: 0,
-            fill: true,
-            fillColor: '#ff3b30',
-            fillOpacity: 0.9,
-          },
+          // Correct source-layer name from GIBS metadata (FIRMS_MODIS_Thermal_Anomalies)
+          'FIRMS_MODIS_Thermal_Anomalies': function(properties, zoom, geometryDimension) {
+            // Only style point features (geometryDimension === 1)
+            if (geometryDimension === 1) {
+              // Optional: Dynamic styling based on Fire Radiative Power (FRP)
+              const frp = properties.FRP || 0;
+              const confidence = properties.CONFIDENCE || 0;
+
+              // Color based on fire intensity
+              let fillColor = '#ff9900'; // Default orange
+              if (frp > 200) fillColor = '#ff0000';      // High intensity: red
+              else if (frp > 100) fillColor = '#ff3b30'; // Medium: bright red-orange
+
+              return {
+                radius: Math.min(3 + (frp / 100), 6), // Scale by FRP, max 6px
+                weight: 1,
+                fillColor: fillColor,
+                fillOpacity: confidence > 80 ? 0.9 : 0.7, // Higher opacity for confident detections
+                color: '#ff0000',
+                fill: true
+              };
+            }
+            return {}; // Fallback for non-point geometries
+          }
         },
+        getFeatureId: (feature) => {
+          return feature.properties.id || feature.properties.fid || Math.random();
+        },
+        // Prevent wrapping and limit to valid geographic bounds
+        noWrap: true,
+        bounds: L.latLngBounds(L.latLng(-85.051129, -180), L.latLng(85.051129, 180)),
+      });
+
+      // Debug: Log when tiles load/error
+      vectorLayer.on('load', () => {
+        console.log(`✓ MVT layer ${gibsId} loaded successfully`);
+      });
+
+      vectorLayer.on('tileerror', (e) => {
+        console.warn(`⚠ MVT tile error for ${gibsId}:`, e);
       });
 
       // Attach metadata for later use
@@ -158,6 +181,27 @@ watch(
         // Clamp zoom for raster LST to its native max as well
         if (gibsLayer._gibsId === 'MODIS_Aqua_Land_Surface_Temp_Day' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 7)) {
           map.setZoom(gibsLayer._gibsMaxZoom ?? 7);
+        }
+        // Clamp zoom for AOD (Deep Blue, Aqua) to avoid requesting tiles beyond native max
+        if (gibsLayer._gibsId === 'MODIS_Aqua_AOD_Deep_Blue_Combined' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 9)) {
+          map.setZoom(gibsLayer._gibsMaxZoom ?? 9);
+        }
+        // Clamp for newly added LST/BT31 layers (native Level 7)
+        const level7Ids = new Set([
+          'MODIS_Aqua_Land_Surface_Temp_Night',
+          'MODIS_Terra_Land_Surface_Temp_Day',
+          'MODIS_Terra_Land_Surface_Temp_Night',
+          'MODIS_Aqua_Brightness_Temp_Band31_Day',
+          'MODIS_Aqua_Brightness_Temp_Band31_Night',
+          'MODIS_Terra_Brightness_Temp_Band31_Day',
+          'MODIS_Terra_Brightness_Temp_Band31_Night',
+        ]);
+        if (level7Ids.has(gibsLayer._gibsId) && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 7)) {
+          map.setZoom(gibsLayer._gibsMaxZoom ?? 7);
+        }
+        // Generic safety clamp for any configured max
+        if (typeof gibsLayer._gibsMaxZoom === 'number' && map.getZoom() > gibsLayer._gibsMaxZoom) {
+          map.setZoom(gibsLayer._gibsMaxZoom);
         }
         console.log(`Added NASA GIBS layer: ${layerId}`);
       } else if (!isActive && map.hasLayer(gibsLayer)) {

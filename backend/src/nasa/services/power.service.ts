@@ -91,13 +91,18 @@ export class PowerService {
   }
 
   private getCurrentDate(): string {
+    // NASA POWER has significant data processing delay
+    // Use date from exactly 1 year ago
     const now = new Date();
+    now.setFullYear(now.getFullYear() - 1);
     return now.toISOString().slice(0, 10).replace(/-/g, '');
   }
 
   private getDefaultStartDate(): string {
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    return oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
+    // Get data from 1 month before the end date (13 months ago total)
+    const endDate = new Date();
+    endDate.setFullYear(endDate.getFullYear() - 1);
+    endDate.setMonth(endDate.getMonth() - 1);
+    return endDate.toISOString().slice(0, 10).replace(/-/g, '');
   }
 }

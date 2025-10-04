@@ -14,6 +14,62 @@ const layers = [
     description: 'Land surface temperature'
   },
   {
+    key: 'aquaLSTNight',
+    label: 'Surface Temperature (Aqua Night)',
+    color: '#f39c12',
+    icon: '🌡️',
+    description: 'MODIS Aqua LST Night'
+  },
+  {
+    key: 'terraLSTDay',
+    label: 'Surface Temperature (Terra Day)',
+    color: '#f39c12',
+    icon: '🌡️',
+    description: 'MODIS Terra LST Day'
+  },
+  {
+    key: 'terraLSTNight',
+    label: 'Surface Temperature (Terra Night)',
+    color: '#f39c12',
+    icon: '🌡️',
+    description: 'MODIS Terra LST Night'
+  },
+  {
+    key: 'aodValueAdded',
+    label: 'Aerosol Optical Depth (Deep Blue)',
+    color: '#9b59b6',
+    icon: '🌫️',
+    description: 'MODIS Aqua Deep Blue Combined AOD'
+  },
+  {
+    key: 'aquaBT31Day',
+    label: 'Brightness Temp Band 31 (Aqua Day)',
+    color: '#e74c3c',
+    icon: '📡',
+    description: 'MODIS Aqua BT31 Day'
+  },
+  {
+    key: 'aquaBT31Night',
+    label: 'Brightness Temp Band 31 (Aqua Night)',
+    color: '#e74c3c',
+    icon: '📡',
+    description: 'MODIS Aqua BT31 Night'
+  },
+  {
+    key: 'terraBT31Day',
+    label: 'Brightness Temp Band 31 (Terra Day)',
+    color: '#e74c3c',
+    icon: '📡',
+    description: 'MODIS Terra BT31 Day'
+  },
+  {
+    key: 'terraBT31Night',
+    label: 'Brightness Temp Band 31 (Terra Night)',
+    color: '#e74c3c',
+    icon: '📡',
+    description: 'MODIS Terra BT31 Night'
+  },
+  {
     key: 'water',
     label: 'Water Bodies',
     color: '#3498db',

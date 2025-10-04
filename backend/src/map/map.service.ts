@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { ScoringService } from '../data/scoring.service';
+import { InfrastructureService } from '../data/infrastructure.service';
 
 interface Bounds {
   lat1: number;
@@ -15,6 +16,7 @@ export class MapService {
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private scoringService: ScoringService,
+    private infrastructureService: InfrastructureService,
   ) {}
 
   async getLocationScore(lat: number, lng: number) {
@@ -67,5 +69,23 @@ export class MapService {
 
     await this.cacheManager.set(cacheKey, timeSeriesData);
     return timeSeriesData;
+  }
+
+  async getRecommendations(lat: number, lng: number) {
+    const cacheKey = `recommendations_${lat}_${lng}`;
+    const cached = await this.cacheManager.get(cacheKey);
+
+    if (cached) {
+      return cached;
+    }
+
+    // Get location scores first
+    const scores = await this.getLocationScore(lat, lng);
+
+    // Generate recommendations based on scores
+    const recommendations = await this.infrastructureService.generateRecommendations(scores as any);
+
+    await this.cacheManager.set(cacheKey, recommendations);
+    return recommendations;
   }
 }

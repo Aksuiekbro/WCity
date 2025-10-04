@@ -24,4 +24,11 @@ export const apiClient = {
     });
     return response.data;
   },
+
+  async getRecommendations(lat, lng) {
+    const response = await axios.get(`${API_BASE_URL}/map/recommendations`, {
+      params: { lat, lng },
+    });
+    return response.data;
+  },
 };

@@ -73,6 +73,15 @@ export function getMonthlyGIBSDate() {
 }
 
 /**
+ * Get date for previous year (same day)
+ */
+export function getPreviousYearGIBSDate() {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - 1);
+  return formatDateForGIBS(date);
+}
+
+/**
  * Get appropriate date based on product type
  */
 export function getGIBSDateByType(dateFormat) {
@@ -83,6 +92,8 @@ export function getGIBSDateByType(dateFormat) {
       return get16DayGIBSDate();
     case 'monthly':
       return getMonthlyGIBSDate();
+    case 'previousYear':
+      return getPreviousYearGIBSDate();
     default:
       return getRecentGIBSDate();
   }
