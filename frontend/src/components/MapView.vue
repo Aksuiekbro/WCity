@@ -6,6 +6,7 @@ import { useMapStore } from '../stores/mapStore';
 import { apiClient } from '../services/apiClient';
 import { GIBS_LAYERS, LAYER_ID_TO_GIBS } from '../config/gibsLayers';
 import { getGIBSDateByType } from '../utils/dateUtils';
+import 'leaflet.vectorgrid';
 
 // Fix Leaflet default icon paths for Vite
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -48,18 +49,44 @@ onMounted(() => {
     // Get appropriate date for this layer type
     const date = getGIBSDateByType(config.dateFormat);
 
-    // Create tile layer with date substituted
-    const tileLayer = L.tileLayer(config.url.replace('{date}', date), {
-      attribution: config.attribution,
-      opacity: config.opacity,
-      tileSize: config.tileSize,
-      // Allow viewing beyond native tiles by upscaling
-      maxNativeZoom: config.maxZoom,
-      maxZoom: 19,
-      detectRetina: true,
-    });
+    // Create layer (raster PNG vs vector MVT)
+    if (config.isVector) {
+      const mvtUrl = config.mvtUrl.replace('{date}', date);
+      const vectorLayer = L.vectorGrid.protobuf(mvtUrl, {
+        maxNativeZoom: config.maxZoom,
+        maxZoom: 19,
+        interactive: false,
+        // Style all points uniformly; can be refined using feature.properties
+        pointToLayer: (feature, latlng) =>
+          L.circleMarker(latlng, {
+            radius: 3,
+            color: '#a40000',
+            weight: 1,
+            fillColor: '#ff3b30',
+            fillOpacity: 0.9,
+          }),
+        vectorTileLayerStyles: {
+          // Source-layer name from GIBS style JSON
+          MODIS_Combined_Thermal_Anomalies_All_v6_NRT: {
+            fill: true,
+          },
+        },
+        rendererFactory: L.canvas.tile,
+      });
 
-    gibsLayers.set(layerId, tileLayer);
+      gibsLayers.set(layerId, vectorLayer);
+    } else {
+      // Raster tile fallback
+      const tileLayer = L.tileLayer(config.url.replace('{date}', date), {
+        attribution: config.attribution,
+        opacity: config.opacity,
+        tileSize: config.tileSize,
+        maxNativeZoom: config.maxZoom,
+        maxZoom: 19,
+        detectRetina: true,
+      });
+      gibsLayers.set(layerId, tileLayer);
+    }
   });
 
   // Handle map clicks

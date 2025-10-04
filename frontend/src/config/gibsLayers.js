@@ -54,11 +54,14 @@ export const GIBS_LAYERS = {
     gibsId: 'MODIS_Combined_Thermal_Anomalies_All',
     description:
       'Active fire detections and thermal anomalies (volcanoes, gas flares) from combined Terra+Aqua MODIS (1 km, daily).',
-    url: getGIBSTileUrl('MODIS_Combined_Thermal_Anomalies_All', '{date}', 9),
+    // Vector MVT endpoint (EPSG:3857)
+    isVector: true,
+    mvtUrl:
+      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Combined_Thermal_Anomalies_All/default/{date}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.mvt',
     attribution: 'NASA EOSDIS GIBS / MODIS (MCD14)',
     opacity: 0.85,
     tileSize: 256,
-    maxZoom: 9,
+    maxZoom: 7,
     dateFormat: 'daily',
     legend: {
       min: 0,
