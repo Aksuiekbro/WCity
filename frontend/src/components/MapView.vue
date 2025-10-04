@@ -56,22 +56,26 @@ onMounted(() => {
         maxNativeZoom: config.maxZoom,
         maxZoom: config.maxZoom,
         interactive: false,
-        // Style all points uniformly; can be refined using feature.properties
-        pointToLayer: (feature, latlng) =>
-          L.circleMarker(latlng, {
-            radius: 3,
+        rendererFactory: L.canvas.tile,
+        // Style by source-layer name. Provide multiple aliases to be safe.
+        vectorTileLayerStyles: {
+          MODIS_Combined_Thermal_Anomalies_All_v6_NRT: {
+            radius: 2.5,
             color: '#a40000',
-            weight: 1,
+            weight: 0,
+            fill: true,
             fillColor: '#ff3b30',
             fillOpacity: 0.9,
-          }),
-        vectorTileLayerStyles: {
-          // Source-layer name from GIBS style JSON
-          MODIS_Combined_Thermal_Anomalies_All_v6_NRT: {
+          },
+          MODIS_Combined_Thermal_Anomalies_All: {
+            radius: 2.5,
+            color: '#a40000',
+            weight: 0,
             fill: true,
+            fillColor: '#ff3b30',
+            fillOpacity: 0.9,
           },
         },
-        rendererFactory: L.canvas.tile,
       });
 
       // Attach metadata for later use
