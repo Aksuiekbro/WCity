@@ -48,21 +48,22 @@ export const GIBS_LAYERS = {
   },
 
   // Bonus layers for enhanced functionality
-  fires: {
-    id: 'fires',
-    name: 'Active Fires',
-    gibsId: 'MODIS_Terra_Thermal_Anomalies_All',
-    description: 'Thermal anomalies and active fire detection',
-    url: getGIBSTileUrl('MODIS_Terra_Thermal_Anomalies_All', '{date}', 9),
-    attribution: 'NASA EOSDIS GIBS / MODIS Terra FIRMS',
-    opacity: 0.8,
+  firesCombined: {
+    id: 'firesCombined',
+    name: 'Fires & Thermal Anomalies (Combined)',
+    gibsId: 'MODIS_Combined_Thermal_Anomalies_All',
+    description:
+      'Active fire detections and thermal anomalies (volcanoes, gas flares) from combined Terra+Aqua MODIS (1 km, daily).',
+    url: getGIBSTileUrl('MODIS_Combined_Thermal_Anomalies_All', '{date}', 9),
+    attribution: 'NASA EOSDIS GIBS / MODIS (MCD14)',
+    opacity: 0.85,
     tileSize: 256,
     maxZoom: 9,
     dateFormat: 'daily',
     legend: {
       min: 0,
       max: 100,
-      unit: 'Fire Radiative Power',
+      unit: 'FRP',
       colors: ['#ffff00', '#ff9900', '#ff0000'],
     },
   },
@@ -101,4 +102,5 @@ export function getGIBSLayerById(id) {
 export const LAYER_ID_TO_GIBS = {
   temperature: 'temperature',
   water: 'water',
+  firesCombined: 'firesCombined',
 };

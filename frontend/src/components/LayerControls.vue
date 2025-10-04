@@ -20,6 +20,13 @@ const layers = [
     icon: '💧',
     description: 'True color imagery'
   },
+  {
+    key: 'firesCombined',
+    label: 'Thermal Anomalies (Fires)',
+    color: '#e74c3c',
+    icon: '🔥',
+    description: 'MODIS Combined active fires & thermal anomalies'
+  },
 ];
 
 // Get current date being displayed

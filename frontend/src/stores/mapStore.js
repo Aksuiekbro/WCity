@@ -10,6 +10,7 @@ export const useMapStore = defineStore('map', () => {
   const activeLayers = ref({
     temperature: false,
     water: false,
+    firesCombined: false,
   });
 
   function setSelectedLocation(lat, lng) {
