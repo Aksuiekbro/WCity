@@ -74,6 +74,19 @@ export class OverpassService {
   }
 
   /**
+   * Generic helper used by planning features to fetch arbitrary infrastructure tags.
+   * This prevents duplicating Overpass QL fragments for every new infrastructure type.
+   */
+  async getInfrastructureByTag(
+    bounds: ViewportBounds,
+    key: string,
+    valueOrRegex: string,
+    typeLabel: string,
+  ): Promise<POI[]> {
+    return this.queryOverpassByKey(bounds, key, valueOrRegex, typeLabel);
+  }
+
+  /**
    * Generic method to query Overpass API for POIs by amenity type
    */
   private async queryOverpassPOI(

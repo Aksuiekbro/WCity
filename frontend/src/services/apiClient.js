@@ -28,6 +28,20 @@ async function getWithFallback(path, params) {
   throw lastError;
 }
 
+async function postWithFallback(path, payload) {
+  let lastError;
+  for (const base of API_BASE_FALLBACKS) {
+    try {
+      const url = `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
+      const response = await axios.post(url, payload);
+      return response.data;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
 export const apiClient = {
   async getLocationScore(lat, lng) {
     return await getWithFallback('map/score', { lat, lng });
@@ -57,5 +71,9 @@ export const apiClient = {
       east,
       west,
     });
+  },
+
+  async getPlanningRecommendations(payload) {
+    return await postWithFallback('map/planning/recommendations', payload);
   },
 };

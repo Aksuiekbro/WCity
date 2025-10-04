@@ -1,7 +1,7 @@
 пожарные участки, полицейские, энергостанции, детсады, уники, детдома, дома пристарелых, итд
 
 Can you add that<script setup>
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useMapStore } from '../stores/mapStore';
@@ -41,6 +41,43 @@ const infraLayerGroups = new Map();
 
 // Store heatmap layers (multiple layers for different city sizes)
 let populationHeatmapLayers = [];
+
+// AI Planning controls & state
+const planningHazardOptions = [
+  { value: 'flood', label: 'Floods', icon: '🌊' },
+  { value: 'heatwave', label: 'Heatwaves', icon: '🌡️' },
+  { value: 'landslide', label: 'Landslides', icon: '⛰️' },
+  { value: 'wildfire', label: 'Wildfires', icon: '🔥' },
+];
+
+const planningInfrastructureOptions = [
+  { value: 'shelter', label: 'Flood shelters' },
+  { value: 'hospital', label: 'Hospitals' },
+  { value: 'cooling_center', label: 'Cooling centers' },
+  { value: 'fire_stations', label: 'Fire stations' },
+  { value: 'drainage', label: 'Drainage / pumping hubs' },
+];
+
+const planningPriorityColors = {
+  high: '#e74c3c',
+  medium: '#f39c12',
+  low: '#27ae60',
+};
+
+const planningLayerGroup = L.layerGroup();
+
+const planning = reactive({
+  isOpen: false,
+  hazards: ['flood'],
+  infrastructureType: 'shelter',
+  maxSuggestions: 4,
+  maxDistanceKm: 8,
+  budgetLevel: 'medium',
+  loading: false,
+  error: null,
+  summary: '',
+  suggestions: [],
+});
 
 // Search state (geocoding)
 const searchQuery = ref('');
@@ -258,6 +295,12 @@ onBeforeUnmount(() => {
       }
     });
   }
+  if (map && planningLayerGroup) {
+    planningLayerGroup.clearLayers();
+    if (map.hasLayer(planningLayerGroup)) {
+      map.removeLayer(planningLayerGroup);
+    }
+  }
 });
 
 // Debounced geocoding search (Nominatim)
@@ -340,6 +383,124 @@ async function selectSearchResult(result) {
     mapStore.setError('Failed to fetch location data');
   } finally {
     mapStore.setLoading(false);
+  }
+}
+
+function togglePlanningPanel() {
+  planning.isOpen = !planning.isOpen;
+}
+
+function isHazardSelected(value) {
+  return planning.hazards.includes(value);
+}
+
+function toggleHazard(value) {
+  const idx = planning.hazards.indexOf(value);
+  if (idx >= 0) {
+    if (planning.hazards.length === 1) {
+      return; // always keep at least one hazard active
+    }
+    planning.hazards.splice(idx, 1);
+  } else {
+    planning.hazards.push(value);
+  }
+}
+
+function getPriorityColor(priority) {
+  return planningPriorityColors[priority] || '#3498db';
+}
+
+function clearPlanningResults(options = { preserveError: false }) {
+  planning.suggestions = [];
+  planning.summary = '';
+  if (!options.preserveError) {
+    planning.error = null;
+  }
+  if (planningLayerGroup) {
+    planningLayerGroup.clearLayers();
+    if (map && map.hasLayer(planningLayerGroup)) {
+      map.removeLayer(planningLayerGroup);
+    }
+  }
+}
+
+async function runPlanningAnalysis() {
+  if (!map) return;
+  const bounds = map.getBounds();
+  if (!bounds) return;
+
+  planning.loading = true;
+  planning.error = null;
+
+  const payload = {
+    viewport: {
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest(),
+    },
+    infrastructureType: planning.infrastructureType,
+    hazards: planning.hazards,
+    maxSuggestions: Math.min(10, Math.max(1, planning.maxSuggestions || 1)),
+    constraints: {
+      maxDistanceKm: Math.max(1, planning.maxDistanceKm || 1),
+      budgetLevel: planning.budgetLevel,
+    },
+  };
+
+  try {
+    const response = await apiClient.getPlanningRecommendations(payload);
+    planning.summary = response.summary || '';
+    planning.suggestions = response.suggestions || [];
+    if (!planning.isOpen) {
+      planning.isOpen = true;
+    }
+    renderPlanningSuggestions(planning.suggestions);
+  } catch (error) {
+    console.error('AI planning failed:', error);
+    planning.error = error?.response?.data?.error || 'Failed to fetch planning recommendations';
+    planning.suggestions = [];
+    planning.summary = '';
+    clearPlanningResults({ preserveError: true });
+  } finally {
+    planning.loading = false;
+  }
+}
+
+function renderPlanningSuggestions(suggestions) {
+  if (!map) return;
+  planningLayerGroup.clearLayers();
+
+  if (!suggestions || suggestions.length === 0) {
+    if (map.hasLayer(planningLayerGroup)) {
+      map.removeLayer(planningLayerGroup);
+    }
+    return;
+  }
+
+  suggestions.forEach((suggestion, idx) => {
+    if (typeof suggestion.lat !== 'number' || typeof suggestion.lng !== 'number') return;
+    const color = getPriorityColor(suggestion.priority);
+    const marker = L.circleMarker([suggestion.lat, suggestion.lng], {
+      radius: 9,
+      weight: 2,
+      color,
+      fillColor: color,
+      fillOpacity: 0.8,
+    });
+    marker.bindPopup(`
+      <div style="min-width:220px">
+        <strong>${idx + 1}. ${suggestion.suggested_infrastructure || planning.infrastructureType}</strong>
+        <p style="margin:6px 0;font-size:12px"><strong>Priority:</strong> ${suggestion.priority?.toUpperCase() || 'N/A'}</p>
+        <p style="margin:6px 0;font-size:12px">${suggestion.reason || 'AI rationale unavailable.'}</p>
+        <p style="margin:6px 0;font-size:11px;color:#6c757d">Hazards: ${(suggestion.hazards || planning.hazards).join(', ')}</p>
+      </div>
+    `);
+    planningLayerGroup.addLayer(marker);
+  });
+
+  if (!map.hasLayer(planningLayerGroup)) {
+    planningLayerGroup.addTo(map);
   }
 }
 
@@ -1070,6 +1231,97 @@ watch(
         </li>
       </ul>
     </div>
+    <div class="planning-panel" :class="{ 'is-open': planning.isOpen }">
+      <button class="planning-toggle" @click="togglePlanningPanel">
+        <span>⚡ AI Planning</span>
+        <span v-if="planning.suggestions.length" class="planning-badge">{{ planning.suggestions.length }}</span>
+        <span class="chevron">{{ planning.isOpen ? '▴' : '▾' }}</span>
+      </button>
+
+      <div v-if="planning.isOpen" class="planning-body">
+        <div class="planning-field">
+          <label>Infrastructure focus</label>
+          <select v-model="planning.infrastructureType">
+            <option v-for="option in planningInfrastructureOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </div>
+
+        <div class="planning-field">
+          <label>Hazards</label>
+          <div class="hazard-grid">
+            <button
+              v-for="option in planningHazardOptions"
+              :key="option.value"
+              type="button"
+              class="hazard-chip"
+              :class="{ active: isHazardSelected(option.value) }"
+              @click="toggleHazard(option.value)"
+            >
+              <span class="icon">{{ option.icon }}</span>
+              <span>{{ option.label }}</span>
+            </button>
+          </div>
+          <small class="hint">At least one hazard must stay selected.</small>
+        </div>
+
+        <div class="constraints-grid">
+          <div class="planning-field">
+            <label>Max suggestions</label>
+            <input type="number" min="1" max="10" v-model.number="planning.maxSuggestions" />
+          </div>
+          <div class="planning-field">
+            <label>Max distance to services (km)</label>
+            <input type="number" min="1" max="30" step="1" v-model.number="planning.maxDistanceKm" />
+          </div>
+          <div class="planning-field">
+            <label>Budget level</label>
+            <select v-model="planning.budgetLevel">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="planning-actions">
+          <button class="run-btn" @click="runPlanningAnalysis" :disabled="planning.loading">
+            <span v-if="planning.loading" class="spinner-inline"></span>
+            {{ planning.loading ? 'Analyzing…' : 'Run analysis for viewport' }}
+          </button>
+          <button class="ghost-btn" v-if="planning.suggestions.length" @click="clearPlanningResults()">
+            Clear markers
+          </button>
+        </div>
+
+        <div v-if="planning.error" class="planning-error">{{ planning.error }}</div>
+
+        <div v-if="planning.summary && !planning.error" class="planning-summary">
+          {{ planning.summary }}
+        </div>
+
+        <ul v-if="planning.suggestions.length && !planning.error" class="planning-suggestions">
+          <li v-for="(suggestion, idx) in planning.suggestions" :key="suggestion.id || idx" class="planning-suggestion-item">
+            <div class="suggestion-header">
+              <span class="priority-pill" :style="{ background: getPriorityColor(suggestion.priority) }">
+                {{ (suggestion.priority || 'medium').toUpperCase() }}
+              </span>
+              <span class="coords">{{ suggestion.lat?.toFixed(2) }}, {{ suggestion.lng?.toFixed(2) }}</span>
+            </div>
+            <div class="suggestion-body">
+              <strong>{{ suggestion.suggested_infrastructure || planning.infrastructureType }}</strong>
+              <p>{{ suggestion.reason }}</p>
+              <small>Hazards: {{ (suggestion.hazards || planning.hazards).join(', ') }}</small>
+            </div>
+          </li>
+        </ul>
+
+        <div v-else-if="!planning.loading && !planning.error" class="planning-empty">
+          <p>Select hazards and run the planner to get AI suggested sites.</p>
+        </div>
+      </div>
+    </div>
     <div ref="mapContainer" class="map-container"></div>
     <div v-if="mapStore.loading" class="loading-overlay">
       <div class="spinner"></div>
@@ -1091,6 +1343,224 @@ watch(
   left: 12px;
   z-index: 1001;
   width: 320px;
+}
+
+.planning-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 360px;
+  z-index: 1001;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+}
+
+.planning-toggle {
+  width: 100%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #111;
+  color: #fff;
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.planning-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.planning-body {
+  padding: 16px;
+  color: #1f2a37;
+}
+
+.planning-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.planning-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3c4858;
+}
+
+.planning-field select,
+.planning-field input {
+  border: 1px solid #dfe3eb;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.hazard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hazard-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dfe3eb;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.hazard-chip.active {
+  border-color: #3498db;
+  background: rgba(52, 152, 219, 0.1);
+  color: #0f5da0;
+}
+
+.hazard-chip .icon {
+  font-size: 16px;
+}
+
+.constraints-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.constraints-grid .planning-field:last-child {
+  grid-column: span 2;
+}
+
+.planning-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.run-btn {
+  flex: 1;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.run-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ghost-btn {
+  border: 1px solid #dfe3eb;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.planning-error {
+  background: #fdecea;
+  color: #c0392b;
+  border: 1px solid #fadbd8;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.planning-summary {
+  background: #f4f6fb;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.planning-suggestions {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.planning-suggestion-item {
+  border: 1px solid #e6e8ef;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+
+.suggestion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.priority-pill {
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.coords {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.suggestion-body p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.suggestion-body small {
+  color: #6b7280;
+}
+
+.planning-empty {
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+  padding: 6px 0;
+}
+
+.spinner-inline {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  animation: spin 1s linear infinite;
+}
+
+.hint {
+  font-size: 11px;
+  color: #7b8794;
 }
 
 .search-input {

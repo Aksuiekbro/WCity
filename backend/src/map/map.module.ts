@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
 import { MapController } from './map.controller';
 import { MapService } from './map.service';
+import { PlanningService } from './planning.service';
 import { DataModule } from '../data/data.module';
 import { NasaModule } from '../nasa/nasa.module';
 
@@ -19,6 +20,6 @@ import { NasaModule } from '../nasa/nasa.module';
     NasaModule,
   ],
   controllers: [MapController],
-  providers: [MapService],
+  providers: [MapService, PlanningService],
 })
 export class MapModule {}

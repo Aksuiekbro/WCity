@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { MapService } from './map.service';
 
 @Controller('api/map')
@@ -136,5 +136,39 @@ export class MapController {
     }
 
     return await this.mapService.getInfrastructure(type, bounds);
+  }
+
+  @Post('planning/recommendations')
+  async getPlanningRecommendations(@Body() body: any) {
+    const viewport = body?.viewport || {};
+    const parsedViewport = {
+      north: parseFloat(viewport.north),
+      south: parseFloat(viewport.south),
+      east: parseFloat(viewport.east),
+      west: parseFloat(viewport.west),
+    };
+
+    if (
+      Object.values(parsedViewport).some((value) => Number.isNaN(value)) ||
+      parsedViewport.north <= parsedViewport.south ||
+      parsedViewport.east <= parsedViewport.west
+    ) {
+      return { error: 'Invalid viewport bounds' };
+    }
+
+    const hazards = Array.isArray(body?.hazards)
+      ? body.hazards.map((h: any) => `${h}`)
+      : [];
+
+    const maxSuggestions = Number(body?.maxSuggestions ?? 5);
+
+    return await this.mapService.getPlanningRecommendations({
+      viewport: parsedViewport,
+      infrastructureType: body?.infrastructureType || 'shelter',
+      hazards,
+      maxSuggestions: Number.isNaN(maxSuggestions) ? 5 : maxSuggestions,
+      constraints: body?.constraints || {},
+      includeDebug: Boolean(body?.includeDebug),
+    });
   }
 }

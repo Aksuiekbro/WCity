@@ -7,6 +7,12 @@ import { firstValueFrom } from 'rxjs';
 import { ScoringService } from '../data/scoring.service';
 import { InfrastructureService } from '../data/infrastructure.service';
 import { OverpassService } from '../data/overpass.service';
+import {
+  PlanningService,
+  PlanningRequest,
+  PlanningResponse,
+} from './planning.service';
+import { createHash } from 'crypto';
 
 interface Bounds {
   lat1: number;
@@ -39,6 +45,7 @@ export class MapService {
     private scoringService: ScoringService,
     private infrastructureService: InfrastructureService,
     private overpassService: OverpassService,
+    private planningService: PlanningService,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
@@ -111,6 +118,23 @@ export class MapService {
 
     await this.cacheManager.set(cacheKey, recommendations);
     return recommendations;
+  }
+
+  async getPlanningRecommendations(
+    payload: PlanningRequest,
+  ): Promise<PlanningResponse> {
+    const hash = createHash('md5')
+      .update(JSON.stringify(payload))
+      .digest('hex');
+    const cacheKey = `planning_${hash}`;
+    const cached = await this.cacheManager.get<PlanningResponse>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const response = await this.planningService.suggestInfrastructureSites(payload);
+    await this.cacheManager.set(cacheKey, response, 5 * 60 * 1000); // cache 5 minutes
+    return response;
   }
 
   /**
