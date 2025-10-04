@@ -1,6 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
+import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
@@ -14,7 +12,7 @@ import {
 } from './planning.service';
 import { createHash } from 'crypto';
 
-interface Bounds {
+export interface Bounds {
   lat1: number;
   lng1: number;
   lat2: number;
@@ -41,7 +39,6 @@ export class MapService {
   private readonly GEONAMES_BASE_URL = 'http://api.geonames.org';
 
   constructor(
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private scoringService: ScoringService,
     private infrastructureService: InfrastructureService,
     private overpassService: OverpassService,
@@ -51,27 +48,11 @@ export class MapService {
   ) {}
 
   async getLocationScore(lat: number, lng: number) {
-    const cacheKey = `score_${lat}_${lng}`;
-    const cached = await this.cacheManager.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     const scores = await this.scoringService.calculateScores(lat, lng);
-    await this.cacheManager.set(cacheKey, scores);
-
     return scores;
   }
 
   async getLayerData(layerType: string, bounds: Bounds) {
-    const cacheKey = `layer_${layerType}_${JSON.stringify(bounds)}`;
-    const cached = await this.cacheManager.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     // TODO: Implement layer data fetching based on layerType
     const layerData = {
       type: layerType,
@@ -79,18 +60,10 @@ export class MapService {
       data: [],
     };
 
-    await this.cacheManager.set(cacheKey, layerData);
     return layerData;
   }
 
   async getTimeSeries(lat: number, lng: number, metric: string) {
-    const cacheKey = `timeseries_${lat}_${lng}_${metric}`;
-    const cached = await this.cacheManager.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     // TODO: Implement time series data fetching
     const timeSeriesData = {
       metric,
@@ -98,25 +71,16 @@ export class MapService {
       data: [],
     };
 
-    await this.cacheManager.set(cacheKey, timeSeriesData);
     return timeSeriesData;
   }
 
   async getRecommendations(lat: number, lng: number) {
-    const cacheKey = `recommendations_${lat}_${lng}`;
-    const cached = await this.cacheManager.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     // Get location scores first
     const scores = await this.getLocationScore(lat, lng);
 
     // Generate recommendations based on scores
     const recommendations = await this.infrastructureService.generateRecommendations(scores as any);
 
-    await this.cacheManager.set(cacheKey, recommendations);
     return recommendations;
   }
 
@@ -126,14 +90,7 @@ export class MapService {
     const hash = createHash('md5')
       .update(JSON.stringify(payload))
       .digest('hex');
-    const cacheKey = `planning_${hash}`;
-    const cached = await this.cacheManager.get<PlanningResponse>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
     const response = await this.planningService.suggestInfrastructureSites(payload);
-    await this.cacheManager.set(cacheKey, response, 5 * 60 * 1000); // cache 5 minutes
     return response;
   }
 
@@ -142,13 +99,6 @@ export class MapService {
    * Uses GeoNames cities API with bounding box search
    */
   async getCitiesInViewport(bounds: ViewportBounds) {
-    const cacheKey = `cities_${bounds.north}_${bounds.south}_${bounds.east}_${bounds.west}`;
-    const cached = await this.cacheManager.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     try {
       const username = this.configService.get<string>('GEONAMES_USERNAME');
 
@@ -182,10 +132,6 @@ export class MapService {
         }));
 
         const result = { cities, source: 'GeoNames API', count: cities.length };
-
-        // Cache for 30 minutes
-        await this.cacheManager.set(cacheKey, result, 30 * 60 * 1000);
-
         return result;
       }
 
@@ -201,13 +147,6 @@ export class MapService {
    * Uses Overpass API to fetch OpenStreetMap POI data
    */
   async getInfrastructure(type: string, bounds: ViewportBounds) {
-    const cacheKey = `infrastructure_${type}_${bounds.north}_${bounds.south}_${bounds.east}_${bounds.west}`;
-    const cached = await this.cacheManager.get(cacheKey);
-
-    if (cached) {
-      return cached;
-    }
-
     try {
       let pois: InfrastructurePOI[] = [];
 
@@ -237,10 +176,6 @@ export class MapService {
         source: 'OpenStreetMap Overpass API',
         count: pois.length
       };
-
-      // Cache for 15 minutes (consistent with other endpoints)
-      await this.cacheManager.set(cacheKey, result, 15 * 60 * 1000);
-
       return result;
     } catch (error) {
       console.error(`Error fetching ${type} from Overpass:`, error.message);
