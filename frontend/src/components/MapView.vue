@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 import { onMounted, ref, watch } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,13 +7,26 @@ import { apiClient } from '../services/apiClient';
 import { GIBS_LAYERS, LAYER_ID_TO_GIBS } from '../config/gibsLayers';
 import { getGIBSDateByType } from '../utils/dateUtils';
 
+// Fix Leaflet default icon paths for Vite
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
+
 const mapStore = useMapStore();
-const mapContainer = ref<HTMLElement | null>(null);
-let map: L.Map | null = null;
-let marker: L.Marker | null = null;
+const mapContainer = ref(null);
+let map = null;
+let marker = null;
 
 // Store GIBS layer instances
-const gibsLayers = new Map<string, L.TileLayer>();
+const gibsLayers = new Map();
 
 onMounted(() => {
   if (!mapContainer.value) return;
@@ -47,14 +60,14 @@ onMounted(() => {
   });
 
   // Handle map clicks
-  map.on('click', async (e: L.LeafletMouseEvent) => {
+  map.on('click', async (e) => {
     const { lat, lng } = e.latlng;
 
     // Add/update marker
     if (marker) {
       marker.setLatLng([lat, lng]);
     } else {
-      marker = L.marker([lat, lng]).addTo(map!);
+      marker = L.marker([lat, lng]).addTo(map);
     }
 
     // Fetch scores
@@ -93,13 +106,13 @@ watch(
       const gibsLayer = gibsLayers.get(layerId);
       if (!gibsLayer) return;
 
-      if (isActive && !map!.hasLayer(gibsLayer)) {
+      if (isActive && !map.hasLayer(gibsLayer)) {
         // Add layer to map
-        gibsLayer.addTo(map!);
+        gibsLayer.addTo(map);
         console.log(`Added NASA GIBS layer: ${layerId}`);
-      } else if (!isActive && map!.hasLayer(gibsLayer)) {
+      } else if (!isActive && map.hasLayer(gibsLayer)) {
         // Remove layer from map
-        map!.removeLayer(gibsLayer);
+        map.removeLayer(gibsLayer);
         console.log(`Removed NASA GIBS layer: ${layerId}`);
       }
     });

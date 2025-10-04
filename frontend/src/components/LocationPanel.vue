@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue';
 import { useMapStore } from '../stores/mapStore';
 
@@ -7,14 +7,14 @@ const mapStore = useMapStore();
 const scores = computed(() => mapStore.locationScores);
 const hasData = computed(() => scores.value !== null);
 
-function getScoreColor(score: number): string {
+function getScoreColor(score) {
   if (score >= 80) return '#27ae60';
   if (score >= 60) return '#f39c12';
   if (score >= 40) return '#e67e22';
   return '#e74c3c';
 }
 
-function formatCoordinate(coord: number, isLat: boolean): string {
+function formatCoordinate(coord, isLat) {
   const direction = isLat ? (coord >= 0 ? 'N' : 'S') : (coord >= 0 ? 'E' : 'W');
   return `${Math.abs(coord).toFixed(4)}° ${direction}`;
 }
@@ -38,19 +38,19 @@ function formatCoordinate(coord: number, isLat: boolean): string {
       <!-- Location info -->
       <div class="location-info">
         <div class="coordinates">
-          <span>{{ formatCoordinate(scores!.location.lat, true) }}</span>
-          <span>{{ formatCoordinate(scores!.location.lng, false) }}</span>
+          <span>{{ formatCoordinate(scores.location.lat, true) }}</span>
+          <span>{{ formatCoordinate(scores.location.lng, false) }}</span>
         </div>
       </div>
 
       <!-- Overall Score -->
       <div class="overall-score">
-        <div class="score-circle" :style="{ borderColor: getScoreColor(scores!.overall.score) }">
-          <div class="score-value">{{ scores!.overall.score }}</div>
+        <div class="score-circle" :style="{ borderColor: getScoreColor(scores.overall.score) }">
+          <div class="score-value">{{ scores.overall.score }}</div>
           <div class="score-label">/ 100</div>
         </div>
-        <div class="grade">{{ scores!.overall.grade }}</div>
-        <div class="suitability">{{ scores!.overall.suitability }}</div>
+        <div class="grade">{{ scores.overall.grade }}</div>
+        <div class="suitability">{{ scores.overall.suitability }}</div>
       </div>
 
       <!-- Individual Scores -->
@@ -61,19 +61,19 @@ function formatCoordinate(coord: number, isLat: boolean): string {
             <span class="metric-icon">🌫️</span>
             <span class="metric-name">Air Quality</span>
           </div>
-          <div class="metric-score" :style="{ color: getScoreColor(scores!.scores.airQuality.score) }">
-            {{ scores!.scores.airQuality.score }}%
+          <div class="metric-score" :style="{ color: getScoreColor(scores.scores.airQuality.score) }">
+            {{ scores.scores.airQuality.score }}%
           </div>
           <div class="metric-detail">
-            <small>AOD: {{ scores!.scores.airQuality.aod.toFixed(3) }}</small>
-            <small class="interpretation">{{ scores!.scores.airQuality.interpretation }}</small>
+            <small>AOD: {{ scores.scores.airQuality.aod.toFixed(3) }}</small>
+            <small class="interpretation">{{ scores.scores.airQuality.interpretation }}</small>
           </div>
           <div class="progress-bar">
             <div
               class="progress-fill"
               :style="{
-                width: scores!.scores.airQuality.score + '%',
-                background: getScoreColor(scores!.scores.airQuality.score)
+                width: scores.scores.airQuality.score + '%',
+                background: getScoreColor(scores.scores.airQuality.score)
               }"
             ></div>
           </div>
@@ -85,19 +85,19 @@ function formatCoordinate(coord: number, isLat: boolean): string {
             <span class="metric-icon">🌳</span>
             <span class="metric-name">Vegetation</span>
           </div>
-          <div class="metric-score" :style="{ color: getScoreColor(scores!.scores.vegetation.score) }">
-            {{ scores!.scores.vegetation.score }}%
+          <div class="metric-score" :style="{ color: getScoreColor(scores.scores.vegetation.score) }">
+            {{ scores.scores.vegetation.score }}%
           </div>
           <div class="metric-detail">
-            <small>NDVI: {{ scores!.scores.vegetation.ndvi.toFixed(3) }}</small>
-            <small class="interpretation">{{ scores!.scores.vegetation.interpretation }}</small>
+            <small>NDVI: {{ scores.scores.vegetation.ndvi.toFixed(3) }}</small>
+            <small class="interpretation">{{ scores.scores.vegetation.interpretation }}</small>
           </div>
           <div class="progress-bar">
             <div
               class="progress-fill"
               :style="{
-                width: scores!.scores.vegetation.score + '%',
-                background: getScoreColor(scores!.scores.vegetation.score)
+                width: scores.scores.vegetation.score + '%',
+                background: getScoreColor(scores.scores.vegetation.score)
               }"
             ></div>
           </div>
@@ -109,18 +109,18 @@ function formatCoordinate(coord: number, isLat: boolean): string {
             <span class="metric-icon">🌡️</span>
             <span class="metric-name">Temperature</span>
           </div>
-          <div class="metric-score" :style="{ color: getScoreColor(scores!.scores.temperature.score) }">
-            {{ scores!.scores.temperature.score }}%
+          <div class="metric-score" :style="{ color: getScoreColor(scores.scores.temperature.score) }">
+            {{ scores.scores.temperature.score }}%
           </div>
           <div class="metric-detail">
-            <small>{{ scores!.scores.temperature.current }}{{ scores!.scores.temperature.unit }}</small>
+            <small>{{ scores.scores.temperature.current }}{{ scores.scores.temperature.unit }}</small>
           </div>
           <div class="progress-bar">
             <div
               class="progress-fill"
               :style="{
-                width: scores!.scores.temperature.score + '%',
-                background: getScoreColor(scores!.scores.temperature.score)
+                width: scores.scores.temperature.score + '%',
+                background: getScoreColor(scores.scores.temperature.score)
               }"
             ></div>
           </div>
@@ -132,18 +132,18 @@ function formatCoordinate(coord: number, isLat: boolean): string {
             <span class="metric-icon">💧</span>
             <span class="metric-name">Water Availability</span>
           </div>
-          <div class="metric-score" :style="{ color: getScoreColor(scores!.scores.water.score) }">
-            {{ scores!.scores.water.score }}%
+          <div class="metric-score" :style="{ color: getScoreColor(scores.scores.water.score) }">
+            {{ scores.scores.water.score }}%
           </div>
           <div class="metric-detail">
-            <small>Soil Moisture: {{ scores!.scores.water.soilMoisture }}</small>
+            <small>Soil Moisture: {{ scores.scores.water.soilMoisture }}</small>
           </div>
           <div class="progress-bar">
             <div
               class="progress-fill"
               :style="{
-                width: scores!.scores.water.score + '%',
-                background: getScoreColor(scores!.scores.water.score)
+                width: scores.scores.water.score + '%',
+                background: getScoreColor(scores.scores.water.score)
               }"
             ></div>
           </div>
@@ -155,18 +155,18 @@ function formatCoordinate(coord: number, isLat: boolean): string {
             <span class="metric-icon">🏙️</span>
             <span class="metric-name">Urbanization</span>
           </div>
-          <div class="metric-score" :style="{ color: getScoreColor(scores!.scores.urbanization.score) }">
-            {{ scores!.scores.urbanization.score }}%
+          <div class="metric-score" :style="{ color: getScoreColor(scores.scores.urbanization.score) }">
+            {{ scores.scores.urbanization.score }}%
           </div>
           <div class="metric-detail">
-            <small>{{ scores!.scores.urbanization.populationDensity }} {{ scores!.scores.urbanization.unit }}</small>
+            <small>{{ scores.scores.urbanization.populationDensity }} {{ scores.scores.urbanization.unit }}</small>
           </div>
           <div class="progress-bar">
             <div
               class="progress-fill"
               :style="{
-                width: scores!.scores.urbanization.score + '%',
-                background: getScoreColor(scores!.scores.urbanization.score)
+                width: scores.scores.urbanization.score + '%',
+                background: getScoreColor(scores.scores.urbanization.score)
               }"
             ></div>
           </div>
@@ -175,7 +175,7 @@ function formatCoordinate(coord: number, isLat: boolean): string {
 
       <!-- Timestamp -->
       <div class="timestamp">
-        <small>Data as of {{ new Date(scores!.timestamp).toLocaleString() }}</small>
+        <small>Data as of {{ new Date(scores.timestamp).toLocaleString() }}</small>
       </div>
     </div>
 

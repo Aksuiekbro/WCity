@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 import { useMapStore } from '../stores/mapStore';
 import { GIBS_LAYERS, LAYER_ID_TO_GIBS } from '../config/gibsLayers';
 import { getGIBSDateByType } from '../utils/dateUtils';
@@ -37,7 +37,7 @@ const layers = [
 ];
 
 // Get current date being displayed
-function getCurrentDate(layerId: string): string {
+function getCurrentDate(layerId) {
   const gibsId = LAYER_ID_TO_GIBS[layerId];
   const config = GIBS_LAYERS[gibsId];
   if (!config) return 'N/A';
@@ -51,7 +51,7 @@ function getCurrentDate(layerId: string): string {
 }
 
 // Get legend info for a layer
-function getLegend(layerId: string) {
+function getLegend(layerId) {
   const gibsId = LAYER_ID_TO_GIBS[layerId];
   const config = GIBS_LAYERS[gibsId];
   return config?.legend;
@@ -66,9 +66,9 @@ function getLegend(layerId: string) {
         v-for="layer in layers"
         :key="layer.key"
         class="layer-item"
-        :class="{ active: mapStore.activeLayers[layer.key as keyof typeof mapStore.activeLayers] }"
+        :class="{ active: mapStore.activeLayers[layer.key] }"
       >
-        <div class="layer-header" @click="mapStore.toggleLayer(layer.key as keyof typeof mapStore.activeLayers)">
+        <div class="layer-header" @click="mapStore.toggleLayer(layer.key)">
           <span class="layer-icon">{{ layer.icon }}</span>
           <div class="layer-text">
             <span class="layer-label">{{ layer.label }}</span>
@@ -77,8 +77,8 @@ function getLegend(layerId: string) {
           <div class="toggle-switch">
             <input
               type="checkbox"
-              :checked="mapStore.activeLayers[layer.key as keyof typeof mapStore.activeLayers]"
-              @click.stop="mapStore.toggleLayer(layer.key as keyof typeof mapStore.activeLayers)"
+              :checked="mapStore.activeLayers[layer.key]"
+              @click.stop="mapStore.toggleLayer(layer.key)"
             />
             <span class="slider"></span>
           </div>
@@ -86,7 +86,7 @@ function getLegend(layerId: string) {
 
         <!-- Legend (shown when active) -->
         <div
-          v-if="mapStore.activeLayers[layer.key as keyof typeof mapStore.activeLayers] && getLegend(layer.key)"
+          v-if="mapStore.activeLayers[layer.key] && getLegend(layer.key)"
           class="layer-legend"
         >
           <div class="legend-gradient" :style="{

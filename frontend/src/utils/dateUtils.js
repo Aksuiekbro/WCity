@@ -6,7 +6,7 @@
 /**
  * Format date to YYYY-MM-DD format for GIBS
  */
-export function formatDateForGIBS(date: Date): string {
+export function formatDateForGIBS(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -16,7 +16,7 @@ export function formatDateForGIBS(date: Date): string {
 /**
  * Get date N days ago
  */
-export function getDaysAgo(days: number): Date {
+export function getDaysAgo(days) {
   const date = new Date();
   date.setDate(date.getDate() - days);
   return date;
@@ -25,14 +25,14 @@ export function getDaysAgo(days: number): Date {
 /**
  * Get yesterday's date (most GIBS products have 1-day delay)
  */
-export function getYesterday(): Date {
+export function getYesterday() {
   return getDaysAgo(1);
 }
 
 /**
  * Get date 2 days ago (safer for products with longer delay)
  */
-export function getTwoDaysAgo(): Date {
+export function getTwoDaysAgo() {
   return getDaysAgo(2);
 }
 
@@ -40,7 +40,7 @@ export function getTwoDaysAgo(): Date {
  * Get the most recent available date for GIBS layers
  * Returns 2 days ago to ensure data availability
  */
-export function getRecentGIBSDate(): string {
+export function getRecentGIBSDate() {
   return formatDateForGIBS(getTwoDaysAgo());
 }
 
@@ -48,7 +48,7 @@ export function getRecentGIBSDate(): string {
  * Get date for 16-day products (e.g., NDVI)
  * These are composites, so we use a date that aligns with 16-day periods
  */
-export function get16DayGIBSDate(): string {
+export function get16DayGIBSDate() {
   // Get a date that's a multiple of 16 days from Jan 1
   const now = getDaysAgo(3); // 3 days ago for safety
   const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -65,7 +65,7 @@ export function get16DayGIBSDate(): string {
 /**
  * Get date for monthly products
  */
-export function getMonthlyGIBSDate(): string {
+export function getMonthlyGIBSDate() {
   const date = new Date();
   date.setMonth(date.getMonth() - 1); // Last month
   date.setDate(1); // First day of last month
@@ -75,7 +75,7 @@ export function getMonthlyGIBSDate(): string {
 /**
  * Get appropriate date based on product type
  */
-export function getGIBSDateByType(dateFormat: 'daily' | '16day' | 'monthly'): string {
+export function getGIBSDateByType(dateFormat) {
   switch (dateFormat) {
     case 'daily':
       return getRecentGIBSDate();
@@ -91,7 +91,7 @@ export function getGIBSDateByType(dateFormat: 'daily' | '16day' | 'monthly'): st
 /**
  * Parse GIBS date string (YYYY-MM-DD) to Date object
  */
-export function parseGIBSDate(dateStr: string): Date {
+export function parseGIBSDate(dateStr) {
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day);
 }
@@ -99,8 +99,8 @@ export function parseGIBSDate(dateStr: string): Date {
 /**
  * Get date range for time series (last 30 days)
  */
-export function getDateRange(days: number = 30): string[] {
-  const dates: string[] = [];
+export function getDateRange(days = 30) {
+  const dates = [];
   for (let i = 2; i < days + 2; i++) {
     dates.push(formatDateForGIBS(getDaysAgo(i)));
   }

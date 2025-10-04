@@ -1,15 +1,12 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { LocationScores } from '../services/apiClient';
 
 export const useMapStore = defineStore('map', () => {
-  // State
-  const selectedLocation = ref<{ lat: number; lng: number } | null>(null);
-  const locationScores = ref<LocationScores | null>(null);
+  const selectedLocation = ref(null);
+  const locationScores = ref(null);
   const loading = ref(false);
-  const error = ref<string | null>(null);
+  const error = ref(null);
 
-  // Active layers
   const activeLayers = ref({
     airQuality: false,
     vegetation: false,
@@ -17,24 +14,23 @@ export const useMapStore = defineStore('map', () => {
     water: false,
   });
 
-  // Actions
-  function setSelectedLocation(lat: number, lng: number) {
+  function setSelectedLocation(lat, lng) {
     selectedLocation.value = { lat, lng };
   }
 
-  function setLocationScores(scores: LocationScores) {
+  function setLocationScores(scores) {
     locationScores.value = scores;
   }
 
-  function setLoading(isLoading: boolean) {
+  function setLoading(isLoading) {
     loading.value = isLoading;
   }
 
-  function setError(errorMessage: string | null) {
+  function setError(errorMessage) {
     error.value = errorMessage;
   }
 
-  function toggleLayer(layerName: keyof typeof activeLayers.value) {
+  function toggleLayer(layerName) {
     activeLayers.value[layerName] = !activeLayers.value[layerName];
   }
 
@@ -45,14 +41,11 @@ export const useMapStore = defineStore('map', () => {
   }
 
   return {
-    // State
     selectedLocation,
     locationScores,
     loading,
     error,
     activeLayers,
-
-    // Actions
     setSelectedLocation,
     setLocationScores,
     setLoading,

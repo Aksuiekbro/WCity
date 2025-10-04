@@ -3,30 +3,10 @@
  * Documentation: https://wiki.earthdata.nasa.gov/display/GIBS
  */
 
-export interface GIBSLayerConfig {
-  id: string;
-  name: string;
-  gibsId: string;
-  description: string;
-  url: string;
-  attribution: string;
-  opacity: number;
-  tileSize: number;
-  maxZoom: number;
-  dateFormat: 'daily' | '16day' | 'monthly';
-  colorScale?: string;
-  legend?: {
-    min: number;
-    max: number;
-    unit: string;
-    colors: string[];
-  };
-}
-
 /**
  * Get GIBS tile URL for a specific layer and date
  */
-export function getGIBSTileUrl(gibsId: string, date: string, level: number = 9): string {
+export function getGIBSTileUrl(gibsId, date, level = 9) {
   const baseUrl = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
   return `${baseUrl}/${gibsId}/default/${date}/GoogleMapsCompatible_Level${level}/{z}/{y}/{x}.png`;
 }
@@ -34,7 +14,7 @@ export function getGIBSTileUrl(gibsId: string, date: string, level: number = 9):
 /**
  * NASA GIBS Layers Configuration
  */
-export const GIBS_LAYERS: Record<string, GIBSLayerConfig> = {
+export const GIBS_LAYERS = {
   airQuality: {
     id: 'airQuality',
     name: 'Air Quality (Aerosol)',
@@ -142,21 +122,21 @@ export const GIBS_LAYERS: Record<string, GIBSLayerConfig> = {
 /**
  * Get available GIBS layers for the app
  */
-export function getAvailableGIBSLayers(): GIBSLayerConfig[] {
+export function getAvailableGIBSLayers() {
   return Object.values(GIBS_LAYERS);
 }
 
 /**
  * Get GIBS layer by ID
  */
-export function getGIBSLayerById(id: string): GIBSLayerConfig | undefined {
+export function getGIBSLayerById(id) {
   return GIBS_LAYERS[id];
 }
 
 /**
  * Map layer IDs to GIBS configs
  */
-export const LAYER_ID_TO_GIBS: Record<string, string> = {
+export const LAYER_ID_TO_GIBS = {
   airQuality: 'airQuality',
   vegetation: 'vegetation',
   temperature: 'temperature',
