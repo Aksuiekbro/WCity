@@ -53,7 +53,10 @@ onMounted(() => {
       attribution: config.attribution,
       opacity: config.opacity,
       tileSize: config.tileSize,
-      maxZoom: config.maxZoom,
+      // Allow viewing beyond native tiles by upscaling
+      maxNativeZoom: config.maxZoom,
+      maxZoom: 19,
+      detectRetina: true,
     });
 
     gibsLayers.set(layerId, tileLayer);
