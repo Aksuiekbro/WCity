@@ -54,7 +54,7 @@ onMounted(() => {
       const mvtUrl = config.mvtUrl.replace('{date}', date);
       const vectorLayer = L.vectorGrid.protobuf(mvtUrl, {
         maxNativeZoom: config.maxZoom,
-        maxZoom: 19,
+        maxZoom: config.maxZoom,
         interactive: false,
         // Style all points uniformly; can be refined using feature.properties
         pointToLayer: (feature, latlng) =>
@@ -74,6 +74,9 @@ onMounted(() => {
         rendererFactory: L.canvas.tile,
       });
 
+      // Attach metadata for later use
+      vectorLayer._gibsMaxZoom = config.maxZoom;
+      vectorLayer._gibsId = gibsId;
       gibsLayers.set(layerId, vectorLayer);
     } else {
       // Raster tile fallback
@@ -85,6 +88,8 @@ onMounted(() => {
         maxZoom: 19,
         detectRetina: true,
       });
+      tileLayer._gibsMaxZoom = config.maxZoom;
+      tileLayer._gibsId = gibsId;
       gibsLayers.set(layerId, tileLayer);
     }
   });
@@ -139,6 +144,10 @@ watch(
       if (isActive && !map.hasLayer(gibsLayer)) {
         // Add layer to map
         gibsLayer.addTo(map);
+        // Clamp zoom for vector layers with low max zoom to avoid 404s
+        if (gibsLayer._gibsId === 'MODIS_Combined_Thermal_Anomalies_All' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 7)) {
+          map.setZoom(gibsLayer._gibsMaxZoom ?? 7);
+        }
         console.log(`Added NASA GIBS layer: ${layerId}`);
       } else if (!isActive && map.hasLayer(gibsLayer)) {
         // Remove layer from map
