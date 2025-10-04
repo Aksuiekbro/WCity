@@ -77,7 +77,7 @@ export class ScoringService {
     const soilMoisture = soilData?.soilMoisture || 0.3;
     const ndvi = ndviData?.ndvi || 0.5;
     const aod = aodData?.aod || 0.2;
-    const populationDensity = popData?.populationDensity || 100;
+    const populationDensity = popData?.populationDensity || 1; // Default to very low density if no data
 
     // Normalize to scores (0-1)
     const tempScore = this.normalization.normalizeTemperature(temperature);

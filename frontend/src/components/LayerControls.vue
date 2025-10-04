@@ -100,6 +100,13 @@ const layers = [
     icon: '🔥',
     description: 'MODIS Combined active fires & thermal anomalies'
   },
+  {
+    key: 'populationDensity',
+    label: 'Population Density (2020)',
+    color: '#5ec962',
+    icon: '👥',
+    description: 'WorldPop global population density'
+  },
 ];
 
 // Get current date being displayed

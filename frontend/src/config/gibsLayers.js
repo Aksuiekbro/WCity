@@ -236,6 +236,28 @@ export const GIBS_LAYERS = {
       colors: ['#0000ff', '#00ffff', '#00ff00', '#ffff00', '#ff0000'],
     },
   },
+
+  // WorldPop Population Density Layer (WMS from ogc.worldpop.org)
+  populationDensity: {
+    id: 'populationDensity',
+    name: 'Population Density (2020)',
+    description: 'Global population density from WorldPop (people per 100m grid cell, 2020)',
+    isWMS: true, // WMS layer
+    wmsUrl: 'https://ogc.worldpop.org/geoserver/wpGlobal/wms',
+    wmsLayers: 'wpGlobal:ppp_2020',
+    attribution: 'WorldPop / University of Southampton',
+    opacity: 0.6,
+    format: 'image/png',
+    transparent: true,
+    version: '1.3.0',
+    legend: {
+      min: 0,
+      max: 1000,
+      unit: 'people/100m²',
+      colors: ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
+      description: 'Viridis color scale - purple (low) to yellow (high)'
+    },
+  },
 };
 
 /**
@@ -253,7 +275,7 @@ export function getGIBSLayerById(id) {
 }
 
 /**
- * Map layer IDs to GIBS configs
+ * Map layer IDs to GIBS configs (includes WMS layers like SEDAC)
  */
 export const LAYER_ID_TO_GIBS = {
   temperature: 'temperature',
@@ -267,4 +289,5 @@ export const LAYER_ID_TO_GIBS = {
   aquaBT31Night: 'aquaBT31Night',
   terraBT31Day: 'terraBT31Day',
   terraBT31Night: 'terraBT31Night',
+  populationDensity: 'populationDensity',
 };

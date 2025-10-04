@@ -70,6 +70,12 @@ export class MapController {
     @Query('east') east: string,
     @Query('west') west: string,
   ) {
+    // DISABLED: Population heatmap disabled to prevent GeoNames rate limiting
+    // This endpoint was causing excessive API calls during zoom/pan operations
+    // Population data is still available via the /score endpoint for individual points
+    return { cities: [], note: 'Population heatmap disabled' };
+
+    /* Original implementation - disabled to prevent rate limiting
     const bounds = {
       north: parseFloat(north),
       south: parseFloat(south),
@@ -87,6 +93,7 @@ export class MapController {
     }
 
     return await this.mapService.getCitiesInViewport(bounds);
+    */
   }
 
   @Get('infrastructure')
