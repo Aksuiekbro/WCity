@@ -8,8 +8,6 @@ export const useMapStore = defineStore('map', () => {
   const error = ref(null);
 
   const activeLayers = ref({
-    airQuality: false,
-    vegetation: false,
     temperature: false,
     water: false,
   });

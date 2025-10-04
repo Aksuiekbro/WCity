@@ -7,20 +7,6 @@ const mapStore = useMapStore();
 
 const layers = [
   {
-    key: 'airQuality',
-    label: 'Air Quality (AOD)',
-    color: '#e74c3c',
-    icon: '🌫️',
-    description: 'Aerosol pollution and haze'
-  },
-  {
-    key: 'vegetation',
-    label: 'Vegetation (NDVI)',
-    color: '#27ae60',
-    icon: '🌳',
-    description: 'Greenness and plant health'
-  },
-  {
     key: 'temperature',
     label: 'Surface Temperature',
     color: '#f39c12',

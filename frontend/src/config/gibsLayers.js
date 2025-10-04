@@ -15,44 +15,6 @@ export function getGIBSTileUrl(gibsId, date, level = 9) {
  * NASA GIBS Layers Configuration
  */
 export const GIBS_LAYERS = {
-  airQuality: {
-    id: 'airQuality',
-    name: 'Air Quality (Aerosol)',
-    gibsId: 'MODIS_Terra_Aerosol',
-    description: 'Aerosol Optical Depth (AOD) - measure of air pollution and haze',
-    url: getGIBSTileUrl('MODIS_Terra_Aerosol', '{date}', 9),
-    attribution: 'NASA EOSDIS GIBS / MODIS Terra',
-    opacity: 0.6,
-    tileSize: 256,
-    maxZoom: 9,
-    dateFormat: 'daily',
-    legend: {
-      min: 0,
-      max: 1.0,
-      unit: 'AOD',
-      colors: ['#00ff00', '#ffff00', '#ff9900', '#ff0000', '#990000'],
-    },
-  },
-
-  vegetation: {
-    id: 'vegetation',
-    name: 'Vegetation (NDVI)',
-    gibsId: 'MODIS_Terra_NDVI_16Day',
-    description: 'Normalized Difference Vegetation Index - vegetation health and density',
-    url: getGIBSTileUrl('MODIS_Terra_NDVI_16Day', '{date}', 9),
-    attribution: 'NASA EOSDIS GIBS / MODIS Terra',
-    opacity: 0.65,
-    tileSize: 256,
-    maxZoom: 9,
-    dateFormat: '16day',
-    legend: {
-      min: -0.2,
-      max: 1.0,
-      unit: 'NDVI',
-      colors: ['#b96947', '#d4cf68', '#8fbc5a', '#4e9c3d', '#1f6b2f'],
-    },
-  },
-
   temperature: {
     id: 'temperature',
     name: 'Surface Temperature',
@@ -137,8 +99,6 @@ export function getGIBSLayerById(id) {
  * Map layer IDs to GIBS configs
  */
 export const LAYER_ID_TO_GIBS = {
-  airQuality: 'airQuality',
-  vegetation: 'vegetation',
   temperature: 'temperature',
   water: 'water',
 };
