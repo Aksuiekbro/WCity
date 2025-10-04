@@ -86,6 +86,9 @@ onMounted(() => {
         tileSize: config.tileSize,
         maxNativeZoom: config.maxZoom,
         maxZoom: 19,
+        noWrap: true,
+        bounds: L.latLngBounds(L.latLng(-85.051129, -180), L.latLng(85.051129, 180)),
+        updateWhenIdle: true,
         detectRetina: true,
       });
       tileLayer._gibsMaxZoom = config.maxZoom;
@@ -146,6 +149,10 @@ watch(
         gibsLayer.addTo(map);
         // Clamp zoom for vector layers with low max zoom to avoid 404s
         if (gibsLayer._gibsId === 'MODIS_Combined_Thermal_Anomalies_All' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 7)) {
+          map.setZoom(gibsLayer._gibsMaxZoom ?? 7);
+        }
+        // Clamp zoom for raster LST to its native max as well
+        if (gibsLayer._gibsId === 'MODIS_Aqua_Land_Surface_Temp_Day' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 7)) {
           map.setZoom(gibsLayer._gibsMaxZoom ?? 7);
         }
         console.log(`Added NASA GIBS layer: ${layerId}`);
