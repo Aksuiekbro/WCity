@@ -1358,6 +1358,12 @@ watch(
   backdrop-filter: blur(4px);
 }
 
+.planning-panel.is-open {
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+}
+
 .planning-toggle {
   width: 100%;
   border: none;
@@ -1381,6 +1387,12 @@ watch(
 .planning-body {
   padding: 16px;
   color: #1f2a37;
+}
+
+.planning-panel.is-open .planning-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .planning-field {
