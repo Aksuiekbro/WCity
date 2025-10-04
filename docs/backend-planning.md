@@ -6,7 +6,7 @@
 ### Core Deliverables (MVP)
 - **Data pipeline** with synthetic demo + hooks for real data
 - **Indices**: UHI (Cooling Gap), FSI, AQE, GEI
-- **Streamlit app** for interactive layers and scenario sliders
+- **Streamlit app** for interactive layers and scwenario sliders
 - **Docs**: README with setup/run instructions
 
 ### Directory Layout
