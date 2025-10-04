@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fruit Slot — Realistic Odds (Demo)</title>
+  <style>
+    :root{
+      --bg:#0f1226;
+      --card:#171a39;
+      --accent:#7dd3fc;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --cell:96px;
+      --gap:14px;
+      --radius:22px;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      color:var(--text); background: radial-gradient(1200px 700px at 70% -10%, #213, transparent),
+                                 radial-gradient(900px 600px at 20% 110%, #123, transparent),
+                                 var(--bg);
+      display:flex; align-items:center; justify-content:center; padding:28px;
+    }
+    .app{width:min(980px, 100%);}
+    .row{display:flex; gap:16px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+
+    .machine{background:linear-gradient(180deg, #1b1e42, #121533); border-radius:var(--radius); padding:22px; box-shadow:var(--shadow);}
+    .header{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px}
+    .title{font-weight:700; letter-spacing:.2px}
+    .tag{font-size:12px; color:var(--muted)}
+
+    .window{ position:relative; background:linear-gradient(180deg, #0c0f28, #0a0c1f);
+      border-radius:18px; padding:18px; border:1px solid rgba(255,255,255,.06);}
+
+    .reels{ display:grid; grid-template-columns: repeat(3, var(--cell)); gap:var(--gap); justify-content:center;}
+
+    .reel{ width:var(--cell); height:calc(var(--cell) * 3 + var(--gap) * 2);
+      overflow:hidden; border-radius:16px; background:linear-gradient(180deg, #0e1128, #0b0e22);
+      border:1px solid rgba(255,255,255,.06); position:relative;}
+
+    .strip{ will-change: transform; }
+
+    .cell{
+      width:var(--cell); height:var(--cell); display:grid; place-items:center; font-size:44px; user-select:none;
+      border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .cell .lbl{ font-size:18px; font-weight:800; letter-spacing:.5px; }
+    .cell .bar{ background:#111827; color:#fff; padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15); font-weight:900 }
+    .cell .sev{ font-size:40px; font-weight:900; color:#fbbf24; text-shadow:0 2px 0 #000 }
+    .cell.blank{ opacity:.18 }
+
+    .payline{ position:absolute; left:0; right:0; top:calc(50% - 1px); height:2px; background:linear-gradient(90deg, transparent, #93c5fd, transparent); box-shadow:0 0 6px #93c5fd66}
+
+    .controls{ display:flex; gap:12px; align-items:center; justify-content:center; margin-top:18px; flex-wrap:wrap }
+    .btn{ background:linear-gradient(180deg, #22d3ee, #22a2ee); color:#04121b; border:none; padding:14px 22px; border-radius:14px; font-weight:900; cursor:pointer; letter-spacing:.3px; box-shadow:0 10px 20px #22a2ee33; transition:transform .08s ease}
+    .btn:active{ transform:translateY(1px) }
+    .btn[disabled]{ filter:grayscale(1) brightness(.7); opacity:.7; cursor:not-allowed }
+
+    .pill{ background:#0b1026; border:1px solid rgba(255,255,255,.08); padding:10px 12px; border-radius:999px; display:flex; align-items:center; gap:8px }
+    .pill input{ width:84px; background:transparent; border:none; color:var(--text); font-weight:700; font-size:16px; outline:none; text-align:center }
+
+    .stat{ font-variant-numeric: tabular-nums; font-weight:700 }
+    .hl{ color:var(--accent) }
+    .win{ color:var(--good) }
+    .lose{ color:var(--bad) }
+
+    details{ margin-top:18px; background:#0b1026; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:12px 14px }
+    summary{ cursor:pointer; color:#c7d2fe; font-weight:700 }
+    .paytable{ width:100%; border-collapse:collapse; margin-top:8px; font-variant-numeric: tabular-nums }
+    .paytable td, .paytable th{ border-bottom:1px dashed rgba(255,255,255,.08); padding:6px 8px; color:#d1d5db }
+    .paytable tr:last-child td{ border-bottom:none }
+    .disclaimer{ color:#94a3b8; font-size:12px; margin-top:8px }
+    .blink{ animation: blink 1s linear infinite }
+    @keyframes blink { 50%{ opacity:.3 } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="machine">
+      <div class="header">
+        <div>
+          <div class="title">🍒 Fruit Slot — <span class="tag">demo with casino‑style odds</span></div>
+          <div class="tag">Single payline • 3 reels • Expected return shown below</div>
+        </div>
+        <div class="tag">Credits: <span id="credits" class="stat">1000</span></div>
+      </div>
+
+      <div class="window">
+        <div class="reels">
+          <div class="reel"><div class="strip" id="reel0"></div></div>
+          <div class="reel"><div class="strip" id="reel1"></div></div>
+          <div class="reel"><div class="strip" id="reel2"></div></div>
+        </div>
+        <div class="payline"></div>
+      </div>
+
+      <div class="controls">
+        <div class="pill">Bet
+          <input id="bet" type="number" min="1" step="1" value="1" />
+        </div>
+        <button id="spin" class="btn">SPIN</button>
+        <div class="pill">Last result: <span id="result" class="stat">—</span></div>
+        <div class="pill">RTP (theoretical): <span id="rtp" class="stat hl">…</span></div>
+      </div>
+
+      <details>
+        <summary>Paytable & odds details</summary>
+        <table class="paytable">
+          <thead><tr><th align="left">Combination (center line)</th><th align="right">Payout × bet</th></tr></thead>
+          $1
+          <tr><td>🍉 🍉 🍉</td><td align="right">×15</td></tr>
+          <tr><td>🍇 🍇 🍇</td><td align="right">×15</td></tr>
+          <tr><td>🍑 🍑 🍑</td><td align="right">×10</td></tr>
+          <tr><td>🍊 🍊 🍊</td><td align="right">×8</td></tr>
+          <tr><td>🍋 🍋 🍋</td><td align="right">×6</td></tr>
+          <tr><td>🍒 🍒 🍒</td><td align="right">×4</td></tr>
+          <tr><td>Any two 🍉 on the line</td><td align="right">×3</td></tr>
+          <tr><td>Any two 🍇 on the line</td><td align="right">×3</td></tr>
+          <tr><td>Any two 🍑 on the line</td><td align="right">×3</td></tr>
+          <tr><td>Any two 🍊 on the line</td><td align="right">×2</td></tr>
+          <tr><td>Any two 🍋 on the line</td><td align="right">×2</td></tr>
+          <tr><td>Any two 🍒 on the line</td><td align="right">×1</td></tr>
+          $2
+        </table>
+        $1Weighted symbol strips (64 stops per reel, no blanks). Only fruits pay, and only for 2-of-a-kind or 3-of-a-kind on the center line. Target RTP ≈ 94% (house edge ≈ 6%). For fun only — no real money.$2
+      </details>
+    </div>
+  </div>
+
+  <script>
+  // --- SYMBOLS & STRIPS (realistic distribution) ---
+  // 64 stops per reel. Counts chosen to give a ~94% theoretical RTP with the paytable below.
+  const STOP_COUNTS = {
+    CHERRY: 17,
+    LEMON: 12,
+    ORANGE: 10,
+    PLUM: 9,
+    GRAPE: 6,
+    WATERMELON: 6,
+    BELL: 2,
+    BAR: 1,
+    SEVEN: 1
+  }; // 64 total, no blanks // sum = 64
+
+  // Fruits & payouts (no blanks). Pays only for 2- or 3-of-a-kind fruits on the center line.
+  const FRUITS = ["CHERRY","LEMON","ORANGE","PLUM","GRAPE","WATERMELON"];
+  const PAY3 = { // 3-of-a-kind multipliers (by rarity)
+    CHERRY: 4,
+    LEMON: 6,
+    ORANGE: 8,
+    PLUM: 10,
+    GRAPE: 15,
+    WATERMELON: 15
+  };
+  const PAY2 = { // 2-of-a-kind multipliers (small wins)
+    CHERRY: 1,
+    LEMON: 2,
+    ORANGE: 2,
+    PLUM: 3,
+    GRAPE: 3,
+    WATERMELON: 3
+  };
+
+  // Mapping to display (emoji / labels)
+  const VIEW = {
+    BLANK: () => `<span class="lbl">&nbsp;</span>`,
+    CHERRY: () => `🍒`,
+    LEMON: () => `🍋`,
+    ORANGE: () => `🍊`,
+    PLUM: () => `🍑`,
+    GRAPE: () => `🍇`,
+    WATERMELON: () => `🍉`,
+    BELL: () => `🔔`,
+    BAR: () => `<span class="bar">BAR</span>`,
+    SEVEN: () => `<span class="sev">7</span>`
+  };
+
+  // Build an ordered strip from counts
+  function buildStrip(orderSeed=0){
+    const arr=[];
+    for(const [sym,count] of Object.entries(STOP_COUNTS)){
+      for(let i=0;i<count;i++) arr.push(sym);
+    }
+    // Deterministic shuffle for different reels
+    let seed = (orderSeed||1) * 9973;
+    const rand = () => (seed = (seed*48271) % 0x7fffffff) / 0x7fffffff;
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(rand()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  const STRIPS = [buildStrip(1), buildStrip(2), buildStrip(3)];
+
+  // Render the visual strips (repeat many times for long scroll during spin)
+  const REEL_ELEMS = [document.getElementById('reel0'), document.getElementById('reel1'), document.getElementById('reel2')];
+  const REPEAT = 6; // visual repeats of the 64-stop strip
+  const CELL_H = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cell'));
+
+  STRIPS.forEach((strip, idx)=>{
+    const frag = document.createDocumentFragment();
+    for(let r=0;r<REPEAT;r++){
+      strip.forEach(sym=>{
+        const d=document.createElement('div');
+        d.className = 'cell' + (sym==='BLANK' ? ' blank' : '');
+        d.innerHTML = VIEW[sym]();
+        frag.appendChild(d);
+      });
+    }
+    REEL_ELEMS[idx].appendChild(frag);
+  });
+
+  // Track current top index (within the conceptual infinite strip)
+  const stripLen = STRIPS[0].length; // 64
+  const loopsPerSpin = [8, 9, 10]; // baseline loops per reel for nice staggering
+  const easing = 'cubic-bezier(.12,.78,.16,1)';
+  let topIndex = [0,0,0];
+  let spinning = false;
+
+  // Credits & UI
+  const creditsEl = document.getElementById('credits');
+  const resultEl = document.getElementById('result');
+  const betEl = document.getElementById('bet');
+  const spinBtn = document.getElementById('spin');
+
+  let credits = 1000;
+  function setCredits(v){ credits = Math.max(0, Math.floor(v)); creditsEl.textContent = credits; }
+
+  function payoutFor(line){
+    const [a,b,c] = line;
+    // 3-of-a-kind fruits
+    if(a===b && b===c && FRUITS.includes(a)){
+      return PAY3[a] || 0;
+    }
+    // 2-of-a-kind fruit (exactly two)
+    const counts = {};
+    for(const s of line){ counts[s] = (counts[s]||0) + 1; }
+    let win = 0;
+    for(const f of FRUITS){ if(counts[f]===2) win = Math.max(win, PAY2[f]||0); }
+    return win; // multiplier × bet
+  }
+
+  function centerSymbol(reelIdx, finalTopIndex){
+    // The middle visible row is offset +1 (top, middle, bottom)
+    const idx = (finalTopIndex + 1) % stripLen;
+    return STRIPS[reelIdx][idx];
+  }
+
+  function spin(){
+    if(spinning) return;
+    const bet = Math.max(1, Math.floor(parseInt(betEl.value||'1',10)));
+    if(bet > credits){ resultEl.innerHTML = '<span class="lose">Not enough credits</span>'; return; }
+
+    setCredits(credits - bet);
+    resultEl.textContent = 'Spinning…';
+    spinBtn.disabled = true; spinning = true;
+
+    const targets = [0,1,2].map(i => Math.floor(Math.random()*stripLen)); // 0..63
+
+    [0,1,2].forEach((ri)=>{
+      const stripEl = REEL_ELEMS[ri];
+      // compute delta so that the target symbol ends up in the middle row
+      const loops = loopsPerSpin[ri] + Math.floor(Math.random()*3); // add a little randomness
+      const desiredTop = (targets[ri] - 1 + stripLen) % stripLen;
+      const delta = ( ((desiredTop - (topIndex[ri] % stripLen)) + stripLen) % stripLen ) + loops*stripLen;
+      const newTop = topIndex[ri] + delta;
+
+      stripEl.style.transition = `transform ${1.5 + ri*0.25 + Math.random()*0.15}s ${easing}`;
+      stripEl.style.transform = `translateY(${-newTop * CELL_H}px)`;
+      topIndex[ri] = newTop; // tentatively set; we'll mod it after the animation
+    });
+
+    let finished = 0;
+    function onEnd(e){
+      // Snap back to a small translate by reducing topIndex modulo stripLen
+      const idx = REEL_ELEMS.indexOf(e.currentTarget);
+      const mod = topIndex[idx] % stripLen;
+      e.currentTarget.style.transition = 'none';
+      e.currentTarget.style.transform = `translateY(${-mod * CELL_H}px)`;
+      topIndex[idx] = mod;
+
+      if(++finished===3){
+        // Evaluate outcome
+        const line = [0,1,2].map(i=>centerSymbol(i, topIndex[i]));
+        const mult = payoutFor(line);
+        if(mult>0){
+          const winAmt = mult * Math.max(1, Math.floor(parseInt(betEl.value||'1',10)));
+          setCredits(credits + winAmt);
+          const pretty = line.map(s=>VIEW[s]()).join(' | ');
+          if(mult>0){
+          const winAmt = mult * Math.max(1, Math.floor(parseInt(betEl.value||'1',10)));
+          setCredits(credits + winAmt);
+          resultEl.innerHTML = `<span class="win">WIN ×${mult}</span> (${pretty})`;
+        } else {
+          resultEl.innerHTML = `<span class="lose">No win</span> (${pretty})`;
+        }
+        }
+        spinBtn.disabled = false; spinning = false;
+      }
+
+      // Force reflow to re-enable transitions next spin
+      void e.currentTarget.offsetHeight;
+      // Re-apply default transition for future spins
+      e.currentTarget.style.transition = '';
+    }
+
+    REEL_ELEMS.forEach(el=>{
+      el.addEventListener('transitionend', onEnd, {once:true});
+    });
+  }
+
+  document.getElementById('spin').addEventListener('click', spin);
+
+  // Compute theoretical RTP by enumerating all 64^3 stop combinations (runs once)
+  (function computeRTP(){
+    const rtpEl = document.getElementById('rtp');
+    const [A,B,C] = STRIPS;
+    let ret = 0; const total = A.length * B.length * C.length; // 262,144
+    for(let i=0;i<A.length;i++){
+      const a=A[i];
+      for(let j=0;j<B.length;j++){
+        const b=B[j];
+        for(let k=0;k<C.length;k++){
+          const c=C[k];
+          let w = 0;
+          if(a===b && b===c && PAY_3[a]) w = PAY_3[a];
+          const cherries = (a==='CHERRY') + (b==='CHERRY') + (c==='CHERRY');
+          if(PAY_CHERRY[cherries]) w = Math.max(w, PAY_CHERRY[cherries]);
+          ret += w;
+        }
+      }
+    }
+    const rtp = ret / total; // per 1-credit bet
+    rtpEl.textContent = (rtp*100).toFixed(1) + '%';
+    if(rtp>1) rtpEl.classList.add('win'); else rtpEl.classList.add('hl');
+  })();
+
+  </script>
+</body>
+</html>
