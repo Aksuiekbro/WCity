@@ -16,6 +16,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/worldpop-wms': {
+        target: 'https://ogc.worldpop.org',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/worldpop-wms/, '/geoserver/wpGlobal/wms'),
+      },
     },
   },
   resolve: {

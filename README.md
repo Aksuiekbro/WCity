@@ -4,6 +4,8 @@ Note: Nasa Space Apps Challenge — Data Pathways to Healthy Cities and Human Se
  
 An interactive web application that analyzes city suitability using real-time NASA satellite environmental data. Built for hackathons and urban planning demonstrations.
 
+Space Apps Project Page: https://www.spaceappschallenge.org/2025/find-a-team/elo-ma/?tab=project
+
 ![Tech Stack](https://img.shields.io/badge/Stack-NestJS%20%2B%20Vue%203%20%2B%20Leaflet-blue)
 
 ## 🎯 Features
