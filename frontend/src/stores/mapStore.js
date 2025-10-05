@@ -24,6 +24,7 @@ export const useMapStore = defineStore('map', () => {
     aquaBT31Night: false,
     terraBT31Day: false,
     terraBT31Night: false,
+    populationDensity: false,  // SEDAC Population Density (WMS)
     hospitals: false,
     schools: false,
   });

@@ -22,6 +22,14 @@ interface ViewportBounds {
   west: number;
 }
 
+interface InfrastructurePOI {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  type: string;
+}
+
 @Injectable()
 export class MapService {
   private readonly GEONAMES_BASE_URL = 'http://api.geonames.org';
@@ -177,7 +185,7 @@ export class MapService {
     }
 
     try {
-      let pois = [];
+      let pois: InfrastructurePOI[] = [];
 
       if (type === 'hospitals') {
         pois = await this.overpassService.getHospitalsInViewport(bounds);

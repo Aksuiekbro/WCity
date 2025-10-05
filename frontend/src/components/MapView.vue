@@ -1,8 +1,7 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet.heat'; // Population heatmap plugin
 import { useMapStore } from '../stores/mapStore';
 import { apiClient } from '../services/apiClient';
 import { GIBS_LAYERS, LAYER_ID_TO_GIBS } from '../config/gibsLayers';
@@ -26,9 +25,7 @@ const mapStore = useMapStore();
 const mapContainer = ref(null);
 let map = null;
 let marker = null;
-let heatmapLayer = null; // Population density heatmap
-let currentZoom = 10;
-const HEATMAP_MIN_ZOOM = 10; // Show heatmap at zoom 10+
+const INFRA_MIN_ZOOM = 12; // Show hospitals/schools at zoom 12+
 
 // Store GIBS layer instances
 const gibsLayers = new Map();
@@ -48,12 +45,47 @@ onMounted(() => {
     maxZoom: 19,
   }).addTo(map);
 
-  // Initialize NASA GIBS layers (don't add to map yet)
+  // Initialize NASA GIBS and SEDAC layers (don't add to map yet)
   Object.entries(LAYER_ID_TO_GIBS).forEach(([layerId, gibsId]) => {
     const config = GIBS_LAYERS[gibsId];
     if (!config) return;
 
-    // Get appropriate date for this layer type
+    // Handle ArcGIS tile layers (like NASA SEDAC population density)
+    if (config.isArcGIS) {
+      const arcgisLayer = L.tileLayer(config.arcgisUrl, {
+        attribution: config.attribution,
+        opacity: config.opacity,
+        tileSize: config.tileSize,
+        maxZoom: config.maxZoom,
+        noWrap: false,
+      });
+      arcgisLayer._gibsId = gibsId;
+      arcgisLayer._isArcGIS = true;
+      gibsLayers.set(layerId, arcgisLayer);
+      console.log(`✓ ArcGIS tile layer ${gibsId} initialized`);
+      return;
+    }
+
+    // Handle WMS layers (deprecated - using ArcGIS instead)
+    if (config.isWMS) {
+      const wmsLayer = L.tileLayer.wms(config.wmsUrl, {
+        layers: config.wmsLayers,
+        format: config.format,
+        transparent: config.transparent,
+        opacity: config.opacity,
+        version: config.version,
+        attribution: config.attribution,
+        maxZoom: 19,
+        crs: L.CRS.EPSG3857,
+      });
+      wmsLayer._gibsId = gibsId;
+      wmsLayer._isWMS = true;
+      gibsLayers.set(layerId, wmsLayer);
+      console.log(`✓ WMS layer ${gibsId} initialized`);
+      return;
+    }
+
+    // Get appropriate date for this layer type (GIBS layers only)
     const date = resolveGIBSDate(config.dateFormat, mapStore.gibsDate);
 
     // Create layer (raster PNG vs vector MVT)
@@ -167,97 +199,101 @@ onMounted(() => {
     }
   });
 
-  // Handle zoom changes for hybrid visualization
+  // Handle zoom changes for infrastructure visibility
   map.on('zoomend', () => {
-    currentZoom = map.getZoom();
-    updatePopulationHeatmap();
     updateVisibleInfrastructure();
   });
 
-  // Handle map movement to update heatmap data
+  // Handle map movement to update infrastructure
   map.on('moveend', () => {
-    updatePopulationHeatmap();
     updateVisibleInfrastructure();
   });
-
-  // Initial heatmap update
-  updatePopulationHeatmap();
 });
 
-/**
- * Update population density heatmap based on current viewport and zoom
- * Shows heatmap at zoom 10+, uses GeoNames city data
- */
-async function updatePopulationHeatmap() {
-  if (!map) {
-    console.warn('⚠ Heatmap update skipped: map not initialized');
-    return;
+function handleWindowResize() {
+  if (map) {
+    map.invalidateSize();
   }
+}
+
+// Ensure Leaflet recalculates size after container resizes (e.g., sidebar drag)
+window.addEventListener('resize', handleWindowResize);
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleWindowResize);
+});
+
+// Population heatmap functionality removed to prevent GeoNames API rate limiting
+// Population density data is still available when clicking individual points on the map
+
+// Create or retrieve an infrastructure layer group for a given type
+function getOrCreateInfraGroup(type) {
+  if (infraLayerGroups.has(type)) {
+    return infraLayerGroups.get(type);
+  }
+  const group = L.layerGroup();
+  infraLayerGroups.set(type, group);
+  return group;
+}
+
+// Fetch and render hospitals or schools for current viewport
+async function updateInfrastructureLayer(type) {
+  if (!map) return;
 
   const zoom = map.getZoom();
-  console.log(`🔍 Heatmap check: zoom=${zoom}, min=${HEATMAP_MIN_ZOOM}`);
-
-  // Remove heatmap if zoom is too low
-  if (zoom < HEATMAP_MIN_ZOOM) {
-    if (heatmapLayer && map.hasLayer(heatmapLayer)) {
-      map.removeLayer(heatmapLayer);
-      console.log('📍 Population heatmap hidden (zoom < 10)');
+  if (zoom < INFRA_MIN_ZOOM) {
+    const group = getOrCreateInfraGroup(type);
+    if (map.hasLayer(group)) {
+      map.removeLayer(group);
     }
+    group.clearLayers();
     return;
   }
 
-  // Fetch cities in current viewport
   const bounds = map.getBounds();
   const north = bounds.getNorth();
   const south = bounds.getSouth();
   const east = bounds.getEast();
   const west = bounds.getWest();
 
-  console.log(`🌍 Fetching cities for bounds: N=${north.toFixed(2)}, S=${south.toFixed(2)}, E=${east.toFixed(2)}, W=${west.toFixed(2)}`);
-
   try {
-    const response = await apiClient.getCitiesInViewport(north, south, east, west);
-    console.log('📡 GeoNames response:', response);
+    const response = await apiClient.getInfrastructureInViewport(type, north, south, east, west);
+    const group = getOrCreateInfraGroup(type);
 
-    if (!response.cities || response.cities.length === 0) {
-      console.warn('⚠ No cities found in viewport for heatmap');
-      return;
-    }
+    // Clear previous markers
+    group.clearLayers();
 
-    // Convert city data to heatmap points [lat, lng, intensity]
-    const heatData = response.cities.map(city => {
-      // Normalize population to intensity (0-1)
-      // Log scale for better visualization
-      const intensity = Math.min(1, Math.log10(city.population + 1) / 7); // Max at 10M population
-      return [city.lat, city.lng, intensity];
+    const isHospital = type === 'hospitals';
+    const color = isHospital ? '#e74c3c' : '#3498db';
+    const emoji = isHospital ? '🏥' : '🏫';
+
+    (response.pois || []).forEach((poi) => {
+      if (typeof poi.lat !== 'number' || typeof poi.lng !== 'number') return;
+      const marker = L.circleMarker([poi.lat, poi.lng], {
+        radius: 6,
+        weight: 1,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.85,
+      });
+      marker.bindPopup(`<strong>${emoji} ${poi.name}</strong><br/>${isHospital ? 'Hospital' : 'School'}`);
+      group.addLayer(marker);
     });
 
-    console.log(`🔥 Creating heatmap with ${heatData.length} points`);
-
-    // Remove old heatmap if exists
-    if (heatmapLayer && map.hasLayer(heatmapLayer)) {
-      map.removeLayer(heatmapLayer);
+    if (!map.hasLayer(group)) {
+      group.addTo(map);
     }
-
-    // Create new heatmap layer
-    heatmapLayer = L.heatLayer(heatData, {
-      radius: 25,
-      blur: 35,
-      maxZoom: 17,
-      max: 1.0,
-      gradient: {
-        0.0: 'blue',
-        0.3: 'cyan',
-        0.5: 'lime',
-        0.7: 'yellow',
-        1.0: 'red'
-      }
-    }).addTo(map);
-
-    console.log(`✅ Population heatmap updated with ${response.cities.length} cities`);
   } catch (error) {
-    console.error('❌ Error updating population heatmap:', error);
-    console.error('Error details:', error.message, error.stack);
+    console.error(`❌ Error updating ${type}:`, error);
+  }
+}
+
+function updateVisibleInfrastructure() {
+  if (mapStore.activeLayers.hospitals) {
+    updateInfrastructureLayer('hospitals');
+  }
+  if (mapStore.activeLayers.schools) {
+    updateInfrastructureLayer('schools');
   }
 }
 
@@ -268,6 +304,11 @@ function updateGibsLayersForDate() {
   Object.entries(LAYER_ID_TO_GIBS).forEach(([layerId, gibsId]) => {
     const config = GIBS_LAYERS[gibsId];
     if (!config) return;
+
+    // Skip WMS and ArcGIS layers (they don't have date-based tiles)
+    if (config.isWMS || config.isArcGIS) {
+      return;
+    }
 
     const date = resolveGIBSDate(config.dateFormat, mapStore.gibsDate);
     const existingLayer = gibsLayers.get(layerId);
@@ -376,12 +417,36 @@ watch(
     if (!map) return;
 
     Object.entries(layers).forEach(([layerId, isActive]) => {
+      // Handle infrastructure toggles
+      if (layerId === 'hospitals' || layerId === 'schools') {
+        const group = getOrCreateInfraGroup(layerId);
+        if (isActive) {
+          if (!map.hasLayer(group)) {
+            group.addTo(map);
+          }
+          updateInfrastructureLayer(layerId);
+        } else {
+          if (map.hasLayer(group)) {
+            map.removeLayer(group);
+          }
+          group.clearLayers();
+        }
+        return;
+      }
+
       const gibsLayer = gibsLayers.get(layerId);
       if (!gibsLayer) return;
 
       if (isActive && !map.hasLayer(gibsLayer)) {
         // Add layer to map
         gibsLayer.addTo(map);
+
+        // Skip zoom clamping for WMS/ArcGIS layers (they support all zoom levels)
+        if (gibsLayer._isWMS || gibsLayer._isArcGIS) {
+          console.log(`✓ Added tile layer: ${layerId}`);
+          return;
+        }
+
         // Clamp zoom for vector layers with low max zoom to avoid 404s
         if (gibsLayer._gibsId === 'MODIS_Combined_Thermal_Anomalies_All' && map.getZoom() > (gibsLayer._gibsMaxZoom ?? 7)) {
           map.setZoom(gibsLayer._gibsMaxZoom ?? 7);
