@@ -1,9 +1,26 @@
 <script setup>
 import { useMapStore } from '../stores/mapStore';
 import { GIBS_LAYERS, LAYER_ID_TO_GIBS } from '../config/gibsLayers';
-import { getGIBSDateByType } from '../utils/dateUtils';
+import { getRecentGIBSDate, resolveGIBSDate } from '../utils/dateUtils';
 
 const mapStore = useMapStore();
+
+const infrastructureLayers = [
+  {
+    key: 'hospitals',
+    label: 'Hospitals',
+    color: '#e74c3c',
+    icon: '🏥',
+    description: 'Healthcare facilities'
+  },
+  {
+    key: 'schools',
+    label: 'Schools',
+    color: '#3498db',
+    icon: '🏫',
+    description: 'Educational institutions'
+  },
+];
 
 const layers = [
   {
@@ -36,10 +53,10 @@ const layers = [
   },
   {
     key: 'aodValueAdded',
-    label: 'Aerosol Optical Depth (Deep Blue)',
+    label: 'Aerosol Optical Depth (VIIRS NOAA-20)',
     color: '#9b59b6',
     icon: '🌫️',
-    description: 'MODIS Aqua Deep Blue Combined AOD'
+    description: 'VIIRS NOAA-20 Aerosol Optical Depth'
   },
   {
     key: 'aquaBT31Day',
@@ -91,7 +108,7 @@ function getCurrentDate(layerId) {
   const config = GIBS_LAYERS[gibsId];
   if (!config) return 'N/A';
 
-  const date = getGIBSDateByType(config.dateFormat);
+  const date = resolveGIBSDate(config.dateFormat, mapStore.gibsDate);
   return new Date(date).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -105,11 +122,25 @@ function getLegend(layerId) {
   const config = GIBS_LAYERS[gibsId];
   return config?.legend;
 }
+
+// Date bounds for date picker
+const maxDate = getRecentGIBSDate();
+const minDate = '2000-02-24';
 </script>
 
 <template>
   <div class="layer-controls">
     <h3>NASA Data Layers</h3>
+    <div class="date-picker">
+      <label for="gibsDate">GIBS Date</label>
+      <input
+        id="gibsDate"
+        type="date"
+        :max="maxDate"
+        :min="minDate"
+        v-model="mapStore.gibsDate"
+      />
+    </div>
     <div class="layer-list">
       <div
         v-for="layer in layers"
@@ -153,6 +184,32 @@ function getLegend(layerId) {
       </div>
     </div>
 
+    <h3 style="margin-top: 16px;">Infrastructure</h3>
+    <div class="layer-list">
+      <div
+        v-for="layer in infrastructureLayers"
+        :key="layer.key"
+        class="layer-item"
+        :class="{ active: mapStore.activeLayers[layer.key] }"
+      >
+        <div class="layer-header" @click="mapStore.toggleLayer(layer.key)">
+          <span class="layer-icon">{{ layer.icon }}</span>
+          <div class="layer-text">
+            <span class="layer-label">{{ layer.label }}</span>
+            <span class="layer-desc">{{ layer.description }}</span>
+          </div>
+          <div class="toggle-switch">
+            <input
+              type="checkbox"
+              :checked="mapStore.activeLayers[layer.key]"
+              @click.stop="mapStore.toggleLayer(layer.key)"
+            />
+            <span class="slider"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="layer-info">
       <div class="info-badge">
         <span class="badge-icon">🛰️</span>
@@ -174,6 +231,26 @@ function getLegend(layerId) {
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.date-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.date-picker label {
+  font-size: 12px;
+  color: #2c3e50;
+  opacity: 0.8;
+}
+
+.date-picker input[type="date"] {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
 }
 
 h3 {

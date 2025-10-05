@@ -36,11 +36,11 @@ export const GIBS_LAYERS = {
 
   aodValueAdded: {
     id: 'aodValueAdded',
-    name: 'MODIS Combined Value-Added Aerosol Optical Depth',
-    gibsId: 'MODIS_Combined_Value_Added_AOD',
-    description: 'MODIS Aqua AOD (Deep Blue combined) - air quality indicator',
-    url: getGIBSTileUrl('MODIS_Combined_Value_Added_AOD', '{date}', 9),
-    attribution: 'NASA EOSDIS GIBS / MODIS combined',
+    name: 'Aerosol Optical Depth (VIIRS NOAA-20)',
+    gibsId: 'VIIRS_NOAA20_Aerosol_Optical_Depth',
+    description: 'VIIRS NOAA-20 Aerosol Optical Depth (AOD)',
+    url: getGIBSTileUrl('VIIRS_NOAA20_Aerosol_Optical_Depth', '{date}', 9),
+    attribution: 'NASA EOSDIS GIBS / VIIRS NOAA-20',
     opacity: 0.65,
     tileSize: 256,
     maxZoom: 9,

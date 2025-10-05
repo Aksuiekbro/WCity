@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Param } from '@nestjs/common';
 import { MapService } from './map.service';
 
 @Controller('api/map')
@@ -23,7 +23,7 @@ export class MapController {
   @Get('layers/:layerType')
   async getLayerData(
     @Query('bounds') bounds: string,
-    @Query('layerType') layerType: string,
+    @Param('layerType') layerType: string,
   ) {
     // Parse bounds: "lat1,lng1,lat2,lng2"
     const [lat1, lng1, lat2, lng2] = bounds.split(',').map(parseFloat);
@@ -61,5 +61,62 @@ export class MapController {
     }
 
     return await this.mapService.getRecommendations(latitude, longitude);
+  }
+
+  @Get('cities')
+  async getCitiesInViewport(
+    @Query('north') north: string,
+    @Query('south') south: string,
+    @Query('east') east: string,
+    @Query('west') west: string,
+  ) {
+    const bounds = {
+      north: parseFloat(north),
+      south: parseFloat(south),
+      east: parseFloat(east),
+      west: parseFloat(west),
+    };
+
+    if (
+      isNaN(bounds.north) ||
+      isNaN(bounds.south) ||
+      isNaN(bounds.east) ||
+      isNaN(bounds.west)
+    ) {
+      return { error: 'Invalid bounding box coordinates' };
+    }
+
+    return await this.mapService.getCitiesInViewport(bounds);
+  }
+
+  @Get('infrastructure')
+  async getInfrastructure(
+    @Query('type') type: string,
+    @Query('north') north: string,
+    @Query('south') south: string,
+    @Query('east') east: string,
+    @Query('west') west: string,
+  ) {
+    if (!['hospitals', 'schools'].includes(type)) {
+      return { error: 'Invalid type. Use "hospitals" or "schools"' };
+    }
+
+    const bounds = {
+      north: parseFloat(north),
+      south: parseFloat(south),
+      east: parseFloat(east),
+      west: parseFloat(west),
+    };
+
+    if (
+      isNaN(bounds.north) ||
+      isNaN(bounds.south) ||
+      isNaN(bounds.east) ||
+      isNaN(bounds.west)
+    ) {
+      return { error: 'Invalid bounding box coordinates' };
+    }
+
+    return await this.mapService.getInfrastructure(type, bounds);
   }
 }
