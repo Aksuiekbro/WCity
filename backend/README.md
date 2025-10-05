@@ -31,6 +31,30 @@
 $ npm install
 ```
 
+## Environment variables (.env)
+
+Create a `.env` file in the `backend/` directory. This is required to fetch location data (nearest cities/population) for clicked points on the map.
+
+```bash
+# backend/.env
+
+# Required for fetching location data
+GEONAMES_USERNAME=your_geonames_username
+
+# Optional: enable real NDVI via NASA AppEEARS
+NASA_EARTHDATA_USERNAME=your_earthdata_username
+NASA_EARTHDATA_PASSWORD=your_earthdata_password
+
+# Optional: enable infrastructure recommendations
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional: server port
+PORT=3000
+```
+
+- Get a GeoNames username here: [GeoNames signup](https://www.geonames.org/login)
+- The app uses `@nestjs/config` to auto-load `backend/.env`. Without `GEONAMES_USERNAME`, location features use estimation.
+
 ## Compile and run the project
 
 ```bash

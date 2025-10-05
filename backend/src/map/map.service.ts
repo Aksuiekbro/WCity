@@ -191,10 +191,24 @@ export class MapService {
         pois = await this.overpassService.getHospitalsInViewport(bounds);
       } else if (type === 'schools') {
         pois = await this.overpassService.getSchoolsInViewport(bounds);
+      } else if (type === 'fire_stations') {
+        pois = await this.overpassService.getFireStationsInViewport(bounds);
+      } else if (type === 'police') {
+        pois = await this.overpassService.getPoliceInViewport(bounds);
+      } else if (type === 'kindergartens') {
+        pois = await this.overpassService.getKindergartensInViewport(bounds);
+      } else if (type === 'universities') {
+        pois = await this.overpassService.getUniversitiesInViewport(bounds);
+      } else if (type === 'power_plants') {
+        pois = await this.overpassService.getPowerPlantsInViewport(bounds);
+      } else if (type === 'orphanages') {
+        pois = await this.overpassService.getOrphanagesInViewport(bounds);
+      } else if (type === 'nursing_homes') {
+        pois = await this.overpassService.getNursingHomesInViewport(bounds);
       }
 
       const result = {
-        pois,
+        pois: pois.map(p => ({ ...p, type })),
         type,
         source: 'OpenStreetMap Overpass API',
         count: pois.length

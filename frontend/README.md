@@ -35,4 +35,25 @@ npm run dev
 
 ```sh
 npm run build
+
+## API Base URL (Dev/Prod)
+
+- The dev server proxies `'/api'` to the backend at `http://localhost:3000` (see `vite.config.js`).
+- You can override the API base with an explicit environment variable:
+
+```
+# .env.local
+VITE_API_BASE_URL=http://localhost:3000/api
+```
+
+If not set, `src/services/apiClient.js` defaults to `http://localhost:3000/api`.
+
+For production, set the API base via environment:
+
+```
+# .env.production (or your deployment env vars)
+VITE_API_BASE_URL=https://api.your-domain.com/api
+```
+
+This ensures the app calls your deployed backend without code changes.
 ```

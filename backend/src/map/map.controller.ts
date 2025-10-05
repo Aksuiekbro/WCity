@@ -104,8 +104,19 @@ export class MapController {
     @Query('east') east: string,
     @Query('west') west: string,
   ) {
-    if (!['hospitals', 'schools'].includes(type)) {
-      return { error: 'Invalid type. Use "hospitals" or "schools"' };
+    const allowed = new Set([
+      'hospitals',
+      'schools',
+      'fire_stations',
+      'police',
+      'power_plants',
+      'kindergartens',
+      'universities',
+      'orphanages',
+      'nursing_homes',
+    ]);
+    if (!allowed.has(type)) {
+      return { error: 'Invalid type. Allowed: hospitals, schools, fire_stations, police, power_plants, kindergartens, universities, orphanages, nursing_homes' };
     }
 
     const bounds = {

@@ -79,7 +79,34 @@ npm install leaflet axios pinia
 npm install --save-dev @types/leaflet
 ```
 
-### 2. Start the Backend
+### 2. Create Backend .env
+
+Create a `.env` file in the `backend/` folder:
+
+```bash
+# backend/.env
+
+# Server
+PORT=3000
+
+# GeoNames (REQUIRED for fetching location data on map click)
+GEONAMES_USERNAME=your_geonames_username
+
+# NASA AppEEARS (optional; enables real NDVI from MODIS)
+NASA_EARTHDATA_USERNAME=your_earthdata_username
+NASA_EARTHDATA_PASSWORD=your_earthdata_password
+
+# OpenAI (optional; enables infrastructure recommendations)
+OPENAI_API_KEY=your_openai_api_key
+```
+
+The backend uses `@nestjs/config` and will automatically load `backend/.env`.
+
+Notes:
+- To get a GeoNames username, sign up here: [GeoNames signup](https://www.geonames.org/login)
+- Without `GEONAMES_USERNAME`, clicked-point location data (nearest city/population) will fall back to estimates.
+
+### 3. Start the Backend
 
 ```bash
 cd backend
@@ -88,7 +115,7 @@ npm run start:dev
 
 Backend runs on `http://localhost:3000`
 
-### 3. Start the Frontend
+### 4. Start the Frontend
 
 ```bash
 cd frontend
@@ -97,9 +124,31 @@ npm run dev
 
 Frontend runs on `http://localhost:5173`
 
-### 4. Open the App
+Dev proxy: the frontend proxies `'/api'` requests to `http://localhost:3000` (see `frontend/vite.config.js`).
+
+### 5. Open the App
 
 Navigate to `http://localhost:5173` in your browser.
+
+If you prefer to bypass the dev proxy, set an explicit API base URL:
+
+```
+# frontend/.env.local
+VITE_API_BASE_URL=http://localhost:3000/api
+```
+
+By default, `frontend/src/services/apiClient.js` uses `VITE_API_BASE_URL` if provided, otherwise falls back to `http://localhost:3000/api`.
+
+Production configuration:
+
+- Set the API base via environment variable to avoid hard-coding URLs:
+
+```
+# frontend/.env.production (or .env)
+VITE_API_BASE_URL=https://api.your-domain.com/api
+```
+
+Deploy the frontend with that env so all API requests go to your backend.
 
 ## 📖 How to Use
 
@@ -280,4 +329,4 @@ MIT License - feel free to use for your hackathon or educational project!
 
 ---
 
-Built with ❤️ for hackathons and urban planning demonstrations
+Built with ❤️ for hackathon and urban planning demonstrations
