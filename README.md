@@ -130,6 +130,8 @@ Dev proxy: the frontend proxies `'/api'` requests to `http://localhost:3000` (se
 
 Navigate to `http://localhost:5173` in your browser.
 
+If you just want to explore without running locally, the frontend is also hosted at [https://wcity-frontend.onrender.com](https://wcity-frontend.onrender.com).
+
 If you prefer to bypass the dev proxy, set an explicit API base URL:
 
 ```
