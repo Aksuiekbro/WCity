@@ -102,10 +102,10 @@ const layers = [
   },
   {
     key: 'populationDensity',
-    label: 'Population Density (2020)',
+    label: 'Population Heatmap',
     color: '#5ec962',
     icon: '👥',
-    description: 'WorldPop global population density'
+    description: 'Global population density heatmap'
   },
 ];
 

@@ -237,25 +237,19 @@ export const GIBS_LAYERS = {
     },
   },
 
-  // WorldPop Population Density Layer (WMS via proxy to avoid CORS)
+  // Population Density Heatmap - Client-side visualization using leaflet.heat
   populationDensity: {
     id: 'populationDensity',
-    name: 'Population Density (2020)',
-    description: 'Global population density from WorldPop (people per 100m grid cell, 2020)',
-    isWMS: true, // WMS layer
-    wmsUrl: '/worldpop-wms', // Proxied through Vite to avoid CORS
-    wmsLayers: 'wpGlobal:ppp_2020',
-    attribution: 'WorldPop / University of Southampton',
-    opacity: 0.7,
-    format: 'image/png',
-    transparent: true,
-    version: '1.1.0', // Changed to 1.1.0 for better compatibility
+    name: 'Population Heatmap',
+    description: 'Global population density heatmap from city data',
+    isHeatmap: true,
+    attribution: 'GeoNames / City Population Data',
+    opacity: 0.6,
     legend: {
       min: 0,
-      max: 1000,
-      unit: 'people/100m²',
+      max: 10000,
+      unit: 'people/km²',
       colors: ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
-      description: 'Viridis color scale - purple (low) to yellow (high)'
     },
   },
 };
