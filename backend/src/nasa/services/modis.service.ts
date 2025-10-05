@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { AppEEARSService } from './appeears.service';
 
 /**
  * NASA MODIS Service (Moderate Resolution Imaging Spectroradiometer)
@@ -8,14 +9,35 @@ import { HttpService } from '@nestjs/axios';
  */
 @Injectable()
 export class ModisService {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly appeears: AppEEARSService,
+  ) {}
 
   /**
    * Get NDVI (Normalized Difference Vegetation Index) data
    * Higher values = more vegetation
    */
   async getNDVI(lat: number, lng: number) {
-    // TODO: Implement AppEEARS API call for MODIS NDVI
+    try {
+      // Try to get real data from AppEEARS
+      const realData = await this.appeears.getNDVIForPoint(lat, lng);
+
+      if (realData) {
+        return {
+          ndvi: realData.ndvi,
+          range: '-1 to 1',
+          interpretation: this.interpretNDVI(realData.ndvi),
+          source: realData.source,
+          date: realData.date,
+          note: 'Real MODIS data from AppEEARS',
+        };
+      }
+    } catch (error) {
+      console.warn('AppEEARS NDVI fetch failed, using estimate:', error.message);
+    }
+
+    // Fallback to estimation if AppEEARS fails
     return this.estimateNDVI(lat, lng);
   }
 
