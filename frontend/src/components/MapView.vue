@@ -1339,7 +1339,7 @@ watch(
 
 .search-container {
   position: absolute;
-  top: 12px;
+  top: 70px;
   left: 12px;
   z-index: 1001;
   width: 320px;
