@@ -30,31 +30,19 @@ async function getWithFallback(path, params) {
 
 export const apiClient = {
   async getLocationScore(lat, lng) {
-    const response = await axios.get(`${API_BASE_URL}/map/score`, {
-      params: { lat, lng },
-    });
-    return response.data;
+    return await getWithFallback('map/score', { lat, lng });
   },
 
   async getLayerData(layerType, bounds) {
-    const response = await axios.get(`${API_BASE_URL}/map/layers/${layerType}`, {
-      params: { bounds },
-    });
-    return response.data;
+    return await getWithFallback(`map/layers/${layerType}`, { bounds });
   },
 
   async getTimeSeries(lat, lng, metric) {
-    const response = await axios.get(`${API_BASE_URL}/map/timeseries`, {
-      params: { lat, lng, metric },
-    });
-    return response.data;
+    return await getWithFallback('map/timeseries', { lat, lng, metric });
   },
 
   async getRecommendations(lat, lng) {
-    const response = await axios.get(`${API_BASE_URL}/map/recommendations`, {
-      params: { lat, lng },
-    });
-    return response.data;
+    return await getWithFallback('map/recommendations', { lat, lng });
   },
 
   async getCitiesInViewport(north, south, east, west) {
